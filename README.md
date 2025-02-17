@@ -44,16 +44,6 @@ manager = MQTTStreamManager(
 manager.start()
 ```
 
-## Documentation
-
-- For CLI examples, see `src/ax_devil_mqtt/examples/cli.py`
-- For analytics monitoring, see `src/ax_devil_mqtt/examples/analytics_monitor.py`
-- For replay functionality, see `src/ax_devil_mqtt/examples/replay.py`
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
