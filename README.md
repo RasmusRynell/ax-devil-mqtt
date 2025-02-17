@@ -20,9 +20,28 @@ This library is provided "as is" without any guarantees regarding compatibility 
 
 ## Installation
 
+### Requirements
+- Python >= 3.8
+- An MQTT broker (e.g., Mosquitto, HiveMQ)
+- Access to an Axis camera with MQTT support
+
+You can install the package directly from the source:
+
 ```bash
-pip install -r requirements.txt
+# Install in development mode
+pip install -e .
+
+# Or install in regular mode
+pip install .
 ```
+
+### Dependencies
+
+The package requires the following dependencies (automatically installed):
+- ax-devil-device-api: Core Axis camera interaction library
+- paho-mqtt>=1.6.1: MQTT client functionality
+- python-dateutil>=2.8.2: Date parsing utilities
+- click>=8.0.0: CLI framework
 
 ## Usage
 
@@ -34,7 +53,7 @@ Working with live Axis cameras involves these steps:
 
 1. List available analytics streams from your camera:
 ```bash
-python src/ax_devil_mqtt/examples/cli.py camera list-streams \
+ax-devil-mqtt camera list-streams \
     --camera-ip 192.168.1.200 \
     --username root \
     --password pass
@@ -43,7 +62,7 @@ python src/ax_devil_mqtt/examples/cli.py camera list-streams \
 2. Monitor specific analytics streams (optionally recording them):
 ```bash
 # Monitor streams without recording
-python src/ax_devil_mqtt/examples/cli.py camera monitor \
+ax-devil-mqtt camera monitor \
     --camera-ip 192.168.1.200 \
     --username root \
     --password pass \
@@ -52,7 +71,7 @@ python src/ax_devil_mqtt/examples/cli.py camera monitor \
     --streams "com.axis.object_analytics.v1"
 
 # Monitor and record streams
-python src/ax_devil_mqtt/examples/cli.py camera monitor \
+ax-devil-mqtt camera monitor \
     --camera-ip 192.168.1.200 \
     --username root \
     --password pass \
@@ -76,7 +95,7 @@ Options for `camera monitor`:
 Replay previously recorded analytics data:
 
 ```bash
-python src/ax_devil_mqtt/examples/cli.py simulation replay \
+ax-devil-mqtt simulation replay \
     recordings/camera_recording_20250216_132215.jsonl \
     --broker 192.168.1.100
 ```
@@ -179,8 +198,11 @@ Recordings are stored in JSONL (JSON Lines) format, with each line containing a 
     }
 }
 ```
-
+ 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
