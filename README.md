@@ -34,7 +34,7 @@ Working with live Axis cameras involves these steps:
 
 1. List available analytics streams from your camera:
 ```bash
-python src/cli.py camera list-streams \
+python src/ax_devil_mqtt/examples/cli.py camera list-streams \
     --camera-ip 192.168.1.200 \
     --username root \
     --password pass
@@ -43,7 +43,7 @@ python src/cli.py camera list-streams \
 2. Monitor specific analytics streams (optionally recording them):
 ```bash
 # Monitor streams without recording
-python src/cli.py camera monitor \
+python src/ax_devil_mqtt/examples/cli.py camera monitor \
     --camera-ip 192.168.1.200 \
     --username root \
     --password pass \
@@ -52,7 +52,7 @@ python src/cli.py camera monitor \
     --streams "com.axis.object_analytics.v1"
 
 # Monitor and record streams
-python src/cli.py camera monitor \
+python src/ax_devil_mqtt/examples/cli.py camera monitor \
     --camera-ip 192.168.1.200 \
     --username root \
     --password pass \
@@ -76,7 +76,7 @@ Options for `camera monitor`:
 Replay previously recorded analytics data:
 
 ```bash
-python src/cli.py simulation replay \
+python src/ax_devil_mqtt/examples/cli.py simulation replay \
     recordings/camera_recording_20250216_132215.jsonl \
     --broker 192.168.1.100
 ```
@@ -104,9 +104,9 @@ The package can also be used programmatically in your Python applications:
 ### Camera Integration
 
 ```python
-from manager import MQTTStreamManager
-from ax_devil import CameraConfig
-from ax_devil.features.mqtt_client import BrokerConfig
+from ax_devil_mqtt.core.manager import MQTTStreamManager
+from ax_devil_device_api import CameraConfig
+from ax_devil_device_api.features.mqtt_client import BrokerConfig
 
 # Configure camera
 camera_config = CameraConfig.http(
@@ -139,8 +139,8 @@ manager.start_recording("recordings/camera_recording.jsonl")
 ### Replay Recorded Data
 
 ```python
-from manager import MQTTStreamManager, SimulatorConfig
-from ax_devil.features.mqtt_client import BrokerConfig
+from ax_devil_mqtt.core.manager import MQTTStreamManager, SimulatorConfig
+from ax_devil_device_api.features.mqtt_client import BrokerConfig
 
 # Configure replay
 broker_config = BrokerConfig(
