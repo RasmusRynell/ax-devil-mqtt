@@ -9,27 +9,25 @@ description = "A Python package for working with Axis cameras MQTT functionality
 readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT" }
-authors = [
-    { name = "Rasmus Rynell", email = "rynell.rasmus@gmail.com" }
-]
+authors = [{ name = "Rasmus Rynell", email = "rynell.rasmus@gmail.com" }]
 keywords = ["axis", "mqtt", "camera", "analytics", "iot"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Topic :: Software Development :: Libraries :: Python Modules",
-    "Topic :: System :: Networking :: Monitoring",
+    "Topic :: System :: Networking :: Monitoring"
 ]
+
 dependencies = [
-    "ax-devil-device-api",  # Core Axis camera interaction library
-    "paho-mqtt>=1.6.1",  # MQTT client
-    "python-dateutil>=2.8.2",  # Date parsing utilities
-    "click>=8.0.0",  # CLI framework
+    "ax-devil-device-api",
+    "paho-mqtt>=1.6.1",
+    "python-dateutil>=2.8.2",
+    "click>=8.0.0"
 ]
 
 [project.scripts]
@@ -41,7 +39,7 @@ dev = [
     "pytest-asyncio>=0.18.0",
     "black>=22.0.0",
     "isort>=5.0.0",
-    "mypy>=0.900",
+    "mypy>=0.900"
 ]
 
 [project.urls]
@@ -61,7 +59,7 @@ include = '\.pyi?$'
 [tool.isort]
 profile = "black"
 multi_line_output = 3
-line_length = 100
+line-length = 100
 
 [tool.mypy]
 python_version = "3.8"
