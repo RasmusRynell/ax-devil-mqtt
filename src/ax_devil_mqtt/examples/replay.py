@@ -1,9 +1,11 @@
 import asyncio
 import signal
+import time
 import sys
 from datetime import datetime
 from pathlib import Path
-from ax_devil_mqtt.core.manager import MQTTStreamManager, SimulatorConfig
+from ax_devil_mqtt.core.manager import MQTTStreamManager
+from ax_devil_mqtt.core.types import SimulatorConfig, MQTTStreamConfig
 from ax_devil_device_api.features.mqtt_client import BrokerConfig
 
 # MQTT Broker configuration
@@ -56,15 +58,13 @@ class ReplayExample:
         # Create recordings directory if it doesn't exist
         Path("recordings").mkdir(exist_ok=True)
         
-        # In replay mode, we use raw MQTT topics as they will be loaded from the recording
-        raw_mqtt_topics = ["my/test/topic"]  # Example topic for initial setup
-        
-        self.manager = MQTTStreamManager(
+        config = MQTTStreamConfig(
             broker_config=BROKER_CONFIG,
             simulator_config=SIMULATOR_CONFIG,
-            raw_mqtt_topics=raw_mqtt_topics,  # Use raw topics in replay mode
             message_callback=message_callback
         )
+        
+        self.manager = MQTTStreamManager(config)
         
         # Start components (publisher will be started automatically if simulator config is provided)
         self.manager.start()
@@ -85,6 +85,8 @@ class ReplayExample:
         
         print(f"Starting recording to {filepath}")
         self.manager.start_recording(filepath)
+        time.sleep(10)
+        self.manager.stop_recording()
         return filepath
 
     async def replay_recording(self, recording_file: str):
@@ -146,4 +148,4 @@ class ReplayExample:
 if __name__ == "__main__":
     example = ReplayExample()
     signal.signal(signal.SIGINT, example.signal_handler)
-    example.run() 
+    example.run()

@@ -2,7 +2,8 @@
 import click
 import asyncio
 from pathlib import Path
-from ax_devil_mqtt.core.manager import MQTTStreamManager, SimulatorConfig
+from ax_devil_mqtt.core.manager import MQTTStreamManager
+from ax_devil_mqtt.core.types import SimulatorConfig, MQTTStreamConfig
 from ax_devil_device_api import CameraConfig
 from ax_devil_device_api.features.mqtt_client import BrokerConfig
 
@@ -28,12 +29,26 @@ def camera():
 @click.option("--password", required=True, help="Camera password")
 def list_streams(camera_ip, username, password):
     """List available analytics streams from the camera"""
-    config = CameraConfig.http(
+    camera_config = CameraConfig.http(
         host=camera_ip,
         username=username,
         password=password
     )
-    manager = MQTTStreamManager(camera_config=config)
+    
+    broker_config = BrokerConfig(
+        host="localhost",  # Temporary broker for listing
+        port=1883,
+        use_tls=False,
+        clean_session=True,
+        auto_reconnect=True
+    )
+    
+    config = MQTTStreamConfig(
+        broker_config=broker_config,
+        camera_config=camera_config
+    )
+    
+    manager = MQTTStreamManager(config)
     streams = manager.get_available_streams()
     for stream in streams:
         print(f"- {stream}")
@@ -63,12 +78,14 @@ def monitor(camera_ip, username, password, broker, port, streams, record, durati
         auto_reconnect=True
     )
     
-    manager = MQTTStreamManager(
-        camera_config=camera_config,
+    config = MQTTStreamConfig(
         broker_config=broker_config,
+        camera_config=camera_config,
         analytics_mqtt_data_source_key=streams[0] if streams else None,
         message_callback=default_message_callback
     )
+    
+    manager = MQTTStreamManager(config)
     
     try:
         manager.start()
@@ -111,12 +128,13 @@ def replay(recording_file, broker, port):
         recording_file=recording_file
     )
     
-    manager = MQTTStreamManager(
+    config = MQTTStreamConfig(
         broker_config=broker_config,
         simulator_config=simulator_config,
-        topics=[],  # Topics will be determined from the recording
         message_callback=default_message_callback
     )
+    
+    manager = MQTTStreamManager(config)
     
     try:
         manager.start()

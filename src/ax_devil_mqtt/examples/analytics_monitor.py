@@ -2,6 +2,7 @@ import asyncio
 import signal
 import sys
 from ax_devil_mqtt.core.manager import MQTTStreamManager
+from ax_devil_mqtt.core.types import MQTTStreamConfig
 from ax_devil_mqtt.core.publisher import MQTTPublisher
 import os
 import json
@@ -65,12 +66,14 @@ class CameraExample:
         analytics_key = "com.axis.analytics_scene_description.v0.beta#1"
         print(f"Using analytics data source: {analytics_key}")
     
-        self.manager = MQTTStreamManager(
+        config = MQTTStreamConfig(
             camera_config=CAMERA_CONFIG,
             broker_config=BROKER_CONFIG,
             analytics_mqtt_data_source_key=analytics_key,
             message_callback=message_callback
         )
+        
+        self.manager = MQTTStreamManager(config)
         
         # Start the manager
         self.manager.start()

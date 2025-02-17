@@ -8,12 +8,13 @@ from .core.manager import MQTTStreamManager
 from .core.publisher import MQTTPublisher
 from .core.subscriber import MQTTSubscriber
 from .core.analytics import TemporaryAnalyticsMQTTDataStream
-from .core.types import SimulatorConfig
+from .core.types import SimulatorConfig, MQTTStreamConfig
 
 __all__ = [
     "MQTTStreamManager",
     "MQTTPublisher",
     "MQTTSubscriber",
     "TemporaryAnalyticsMQTTDataStream",
-    "SimulatorConfig"
+    "SimulatorConfig",
+    "MQTTStreamConfig"
 ] 
