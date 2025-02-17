@@ -5,6 +5,7 @@ from ax_devil_device_api.features.mqtt_client import BrokerConfig, MqttStatus
 from ax_devil_device_api.features.analytics_mqtt import PublisherConfig, DataSource
 import uuid
 import atexit
+import sys
 
 @dataclass
 class AnalyticsMQTTConfiguration:
@@ -45,6 +46,7 @@ class TemporaryAnalyticsMQTTDataStream:
             RuntimeError: If stream setup or mqtt client setup fails
         """
         self.client = Client(camera_config)
+        self._cleanup_done = False
         
         self._initial_mqtt_status = self._capture_mqtt_current_state()
         self._analytics_publisher_id = None
@@ -64,7 +66,20 @@ class TemporaryAnalyticsMQTTDataStream:
                 self._restore_state()
                 raise RuntimeError(f"Failed to activate MQTT client: {result.error}")
 
-        atexit.register(self._restore_state)
+        # Register cleanup with atexit instead of relying on __del__
+        atexit.register(self.cleanup)
+
+    def cleanup(self):
+        """Clean up resources and restore state."""
+        if self._cleanup_done:
+            return
+            
+        try:
+            self._restore_state()
+            self._cleanup_done = True
+        except Exception as e:
+            # Log but don't raise during cleanup
+            print(f"Warning: Error during cleanup: {e}")
 
     def get_current_configuration(self) -> Optional[AnalyticsMQTTConfiguration]:
         """
@@ -128,7 +143,7 @@ class TemporaryAnalyticsMQTTDataStream:
             else:
                 self.client.mqtt_client.deactivate()
         except Exception as e:
-            print(f"Error during state restoration: {e}")
+            raise RuntimeError(f"Error during state restoration: {e}")
 
     def _setup_analytics(self, analytics_data_source_key: str, topic: str, custom_topic_prefix: str = "") -> bool:
         """
@@ -175,11 +190,12 @@ class TemporaryAnalyticsMQTTDataStream:
 
     def __del__(self):
         """Ensure cleanup when object is destroyed."""
-        self._restore_state()
+        if not self._cleanup_done and sys and sys.modules:
+            self.cleanup()
 
 
 if __name__ == "__main__":
-    import sys
+    import os
     from pprint import pprint
     
     try:
