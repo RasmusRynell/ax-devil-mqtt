@@ -5,8 +5,8 @@ from concurrent.futures import ThreadPoolExecutor
 import time
 from dataclasses import dataclass
 
-from ax_devil import CameraConfig
-from ax_devil.features.mqtt_client import BrokerConfig
+from ax_devil_device_api import CameraConfig
+from ax_devil_device_api.features.mqtt_client import BrokerConfig
 
 from .subscriber import MQTTSubscriber
 from .publisher import MQTTPublisher

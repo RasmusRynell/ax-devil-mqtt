@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import Optional, Dict, Any, List
-from ax_devil import Client, CameraConfig
-from ax_devil.features.mqtt_client import BrokerConfig, MqttStatus
-from ax_devil.features.analytics_mqtt import PublisherConfig, DataSource
+from ax_devil_device_api import Client, CameraConfig
+from ax_devil_device_api.features.mqtt_client import BrokerConfig, MqttStatus
+from ax_devil_device_api.features.analytics_mqtt import PublisherConfig, DataSource
 import uuid
 import atexit
 
