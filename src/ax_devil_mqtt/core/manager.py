@@ -23,6 +23,7 @@ class MessageProcessor:
         self._executor = ThreadPoolExecutor(max_workers=worker_threads)
         self._stop_event = threading.Event()
         self._worker_threads = []
+        self._shutdown_lock = threading.Lock()  # Add lock for shutdown coordination
 
     def process_message(self, message: Dict[str, Any]):
         """Process a message using the provided callback."""
@@ -47,7 +48,14 @@ class MessageProcessor:
         while not self._stop_event.is_set():
             message = message_queue.get_message(timeout=1.0)
             if message:
-                self._executor.submit(self.process_message, message)
+                # Check if we can still submit tasks
+                with self._shutdown_lock:
+                    if not self._stop_event.is_set():
+                        try:
+                            self._executor.submit(self.process_message, message)
+                        except RuntimeError:
+                            # Executor is shut down, exit the loop
+                            break
 
     def start(self, message_queue):
         """Start message processing workers."""
@@ -58,10 +66,15 @@ class MessageProcessor:
 
     def stop(self):
         """Stop message processing."""
-        self._stop_event.set()
-        self._executor.shutdown(wait=True)
+        with self._shutdown_lock:
+            self._stop_event.set()
+        
+        # Wait for workers to finish their current tasks
         for worker in self._worker_threads:
             worker.join(timeout=2)
+            
+        # Now safe to shutdown the executor
+        self._executor.shutdown(wait=True)
 
 class MQTTStreamManager:
     """
