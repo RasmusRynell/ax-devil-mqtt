@@ -22,9 +22,9 @@ def parse_args():
 
 # Camera configuration
 CAMERA_CONFIG = CameraConfig.http(
-    host=os.getenv("AXIS_TARGET_ADDR"),
-    username=os.getenv("AXIS_TARGET_USER"),
-    password=os.getenv("AXIS_TARGET_PASS")
+    host=os.getenv("AX_DEVIL_TARGET_ADDR"),
+    username=os.getenv("AX_DEVIL_TARGET_USER"),
+    password=os.getenv("AX_DEVIL_TARGET_PASS")
 )
 
 async def message_callback(message):
@@ -136,11 +136,9 @@ class CameraExample:
         self.setup()
         
         try:
-            # Create and run the event loop
             loop = asyncio.get_event_loop()
             loop.run_until_complete(self.timed_recording())
             
-            # Continue running after recording is complete
             while self.running:
                 loop.run_until_complete(asyncio.sleep(1))
         except Exception as e:

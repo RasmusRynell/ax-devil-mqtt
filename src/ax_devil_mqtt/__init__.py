@@ -1,5 +1,5 @@
 """
-AX Devil MQTT - A robust MQTT client implementation for Axis cameras
+AX Devil MQTT - A Python package for settings up and retrieving data from Axis cameras using MQTT
 """
 
 __version__ = "0.1.0"

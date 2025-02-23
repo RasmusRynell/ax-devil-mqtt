@@ -201,9 +201,9 @@ if __name__ == "__main__":
     try:
         # Example usage with explicit configuration
         camera_config = CameraConfig.http(
-            host=os.getenv("AXIS_TARGET_ADDR"),
-            username=os.getenv("AXIS_TARGET_USER"),
-            password=os.getenv("AXIS_TARGET_PASS"),
+            host=os.getenv("AX_DEVIL_TARGET_ADDR"),
+            username=os.getenv("AX_DEVIL_TARGET_USER"),
+            password=os.getenv("AX_DEVIL_TARGET_PASS"),
         )
         
         broker_config = BrokerConfig(
