@@ -81,6 +81,7 @@ class TemporaryAnalyticsMQTTDataStream:
             # Log but don't raise during cleanup
             print(f"Warning: Error during cleanup: {e}")
 
+
     def get_current_configuration(self) -> Optional[AnalyticsMQTTConfiguration]:
         """
         Get the current configuration and status of the analytics stream.
@@ -192,6 +193,7 @@ class TemporaryAnalyticsMQTTDataStream:
         """Ensure cleanup when object is destroyed."""
         if not self._cleanup_done and sys and sys.modules:
             self.cleanup()
+        self.client.close()
 
 
 if __name__ == "__main__":
