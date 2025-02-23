@@ -1,6 +1,6 @@
 # ax-devil-mqtt
 
-A Python package for working with Axis cameras MQTT functionality, supporting analytics recording and replay over external MQTT brokers.
+A Python package for working with Axis devices MQTT functionality, supporting analytics recording and replay over external MQTT brokers.
 
 ## Important Disclaimer
 
@@ -8,7 +8,7 @@ This project is an independent, community-driven implementation and is **not** a
 
 ## Features
 
-- Connect to Axis cameras and access their analytics streams
+- Connect to Axis devices and access their analytics streams
 - Record and replay analytics data
 - Command-line interface and programmatic API
 - Support for multiple analytics streams
@@ -27,13 +27,13 @@ Requires Python ≥ 3.8 and an MQTT broker (e.g., Mosquitto, HiveMQ).
 
 ```python
 from ax_devil_mqtt.core.manager import MQTTStreamManager
-from ax_devil_device_api import CameraConfig
+from ax_devil_device_api import DeviceConfig
 from ax_devil_device_api.features.mqtt_client import BrokerConfig
 
 # Configure and start monitoring
 manager = MQTTStreamManager(
     broker_config=BrokerConfig(host="192.168.1.100"),
-    camera_config=CameraConfig.http(
+    device_config=DeviceConfig.http(
         host="192.168.1.200",
         username="root",
         password="pass"

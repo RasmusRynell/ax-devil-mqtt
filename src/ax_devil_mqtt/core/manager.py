@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 import logging
 from dataclasses import dataclass
 
-from ax_devil_device_api import CameraConfig
+from ax_devil_device_api import DeviceConfig
 from ax_devil_device_api.features.mqtt_client import BrokerConfig
 
 from .subscriber import MQTTSubscriber
@@ -100,8 +100,8 @@ class MQTTStreamManager:
 
     def _setup_stream(self):
         """Setup the appropriate stream based on configuration."""
-        if self._config.camera_config:
-            self._setup_camera_mode()
+        if self._config.device_config:
+            self._setup_device_mode()
         else:
             self._setup_simulator_mode()
 
@@ -113,11 +113,11 @@ class MQTTStreamManager:
             max_queue_size=self._config.max_queue_size
         )
 
-    def _setup_camera_mode(self):
-        """Setup stream for camera mode."""
+    def _setup_device_mode(self):
+        """Setup stream for device mode."""
         if self._config.analytics_mqtt_data_source_key:
             self._analytics_stream = TemporaryAnalyticsMQTTDataStream(
-                camera_config=self._config.camera_config,
+                device_config=self._config.device_config,
                 broker_config=self._config.broker_config,
                 analytics_data_source_key=self._config.analytics_mqtt_data_source_key
             )

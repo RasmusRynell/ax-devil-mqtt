@@ -9,19 +9,18 @@ from ax_devil_mqtt.core.publisher import MQTTPublisher
 import json
 import time
 from datetime import datetime
-from ax_devil_device_api import CameraConfig
+from ax_devil_device_api import DeviceConfig
 from ax_devil_device_api.features.mqtt_client import BrokerConfig
 
 def parse_args():
     """Parse command line arguments."""
-    parser = argparse.ArgumentParser(description='Record MQTT analytics data from camera')
+    parser = argparse.ArgumentParser(description='Record MQTT analytics data from device')
     parser.add_argument('--host', required=True, help='MQTT broker host IP')
     parser.add_argument('--port', type=int, default=1883, help='MQTT broker port (default: 1883)')
     parser.add_argument('--duration', type=int, default=10, help='Recording duration in seconds (default: 10)')
     return parser.parse_args()
 
-# Camera configuration
-CAMERA_CONFIG = CameraConfig.http(
+CAMERA_CONFIG = DeviceConfig.http(
     host=os.getenv("AX_DEVIL_TARGET_ADDR"),
     username=os.getenv("AX_DEVIL_TARGET_USER"),
     password=os.getenv("AX_DEVIL_TARGET_PASS")
@@ -41,12 +40,12 @@ async def message_callback(message):
     except Exception as e:
         print(f"Error processing message: {e}")
 
-class CameraExample:
+class DeviceExample:
     """
-    Example demonstrating camera MQTT integration and message recording.
+    Example demonstrating device MQTT integration and message recording.
     
     This class shows how to:
-    - Set up a connection to an Axis camera
+    - Set up a connection to an Axis device
     - Configure MQTT message publishing
     - Record MQTT messages for a specified duration
     - Handle graceful shutdown
@@ -67,15 +66,15 @@ class CameraExample:
 
     def setup(self):
         """Initialize MQTT stream manager and start monitoring analytics."""
-        print(f"Setting up manager with camera config: {CAMERA_CONFIG}")
+        print(f"Setting up manager with device config: {CAMERA_CONFIG}")
         print(f"Using MQTT broker: {self.broker_config.host}:{self.broker_config.port}")
 
-        # Use analytics data source key for camera mode
+        # Use analytics data source key for device mode
         analytics_key = "com.axis.analytics_scene_description.v0.beta#1"
         print(f"Using analytics data source: {analytics_key}")
     
         config = MQTTStreamConfig(
-            camera_config=CAMERA_CONFIG,
+            device_config=CAMERA_CONFIG,
             broker_config=self.broker_config,
             analytics_mqtt_data_source_key=analytics_key,
             message_callback=message_callback
@@ -119,7 +118,7 @@ class CameraExample:
 
     def signal_handler(self, sig, frame):
         """Handle graceful shutdown on interrupt signal."""
-        print("\nStopping camera monitor...")
+        print("\nStopping device monitor...")
         self.running = False
         
         if self.manager:
@@ -128,8 +127,8 @@ class CameraExample:
         sys.exit(0)
 
     def run(self):
-        """Run the camera example with timed recording."""
-        print(f"Camera IP: {CAMERA_CONFIG.host}")
+        """Run the device example with timed recording."""
+        print(f"Device IP: {CAMERA_CONFIG.host}")
         print(f"MQTT Broker: {self.broker_config.host}:{self.broker_config.port}")
         print("-" * 50)
         
@@ -150,7 +149,7 @@ class CameraExample:
 if __name__ == "__main__":
     args = parse_args()
     
-    example = CameraExample(
+    example = DeviceExample(
         broker_host=args.host,
         broker_port=args.port,
         duration=args.duration

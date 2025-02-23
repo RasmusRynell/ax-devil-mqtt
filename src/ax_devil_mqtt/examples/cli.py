@@ -4,7 +4,7 @@ import asyncio
 from pathlib import Path
 from ax_devil_mqtt.core.manager import MQTTStreamManager
 from ax_devil_mqtt.core.types import SimulatorConfig, MQTTStreamConfig
-from ax_devil_device_api import CameraConfig
+from ax_devil_device_api import DeviceConfig
 from ax_devil_device_api.features.mqtt_client import BrokerConfig
 
 async def default_message_callback(message):
@@ -15,22 +15,22 @@ async def default_message_callback(message):
 
 @click.group()
 def cli():
-    """AX Devil MQTT - Camera Analytics Tool"""
+    """AX Devil MQTT - Device Analytics Tool"""
     pass
 
 @cli.group()
-def camera():
-    """Commands for interacting with live cameras"""
+def device():
+    """Commands for interacting with live devices"""
     pass
 
-@camera.command("list-streams")
-@click.option("--camera-ip", required=True, help="IP address of the camera")
-@click.option("--username", required=True, help="Camera username")
-@click.option("--password", required=True, help="Camera password")
-def list_streams(camera_ip, username, password):
-    """List available analytics streams from the camera"""
-    camera_config = CameraConfig.http(
-        host=camera_ip,
+@device.command("list-streams")
+@click.option("--device-ip", required=True, help="IP address of the device")
+@click.option("--username", required=True, help="Device username")
+@click.option("--password", required=True, help="Device password")
+def list_streams(device_ip, username, password):
+    """List available analytics streams from the device"""
+    device_config = DeviceConfig.http(
+        host=device_ip,
         username=username,
         password=password
     )
@@ -45,7 +45,7 @@ def list_streams(camera_ip, username, password):
     
     config = MQTTStreamConfig(
         broker_config=broker_config,
-        camera_config=camera_config
+        device_config=device_config
     )
     
     manager = MQTTStreamManager(config)
@@ -53,19 +53,19 @@ def list_streams(camera_ip, username, password):
     for stream in streams:
         print(f"- {stream}")
 
-@camera.command("monitor")
-@click.option("--camera-ip", required=True, help="IP address of the camera")
-@click.option("--username", required=True, help="Camera username")
-@click.option("--password", required=True, help="Camera password")
+@device.command("monitor")
+@click.option("--device-ip", required=True, help="IP address of the device")
+@click.option("--username", required=True, help="Device username")
+@click.option("--password", required=True, help="Device password")
 @click.option("--broker", "-b", required=True, help="MQTT broker address")
 @click.option("--port", "-p", default=1883, help="MQTT broker port")
 @click.option("--streams", "-s", multiple=True, help="Analytics streams to monitor")
 @click.option("--record", "-r", is_flag=True, help="Record messages to file")
 @click.option("--duration", "-d", default=0, help="Monitoring duration in seconds (0 for infinite)")
-def monitor(camera_ip, username, password, broker, port, streams, record, duration):
+def monitor(device_ip, username, password, broker, port, streams, record, duration):
     """Monitor specific analytics streams"""
-    camera_config = CameraConfig.http(
-        host=camera_ip,
+    device_config = DeviceConfig.http(
+        host=device_ip,
         username=username,
         password=password
     )
@@ -80,7 +80,7 @@ def monitor(camera_ip, username, password, broker, port, streams, record, durati
     
     config = MQTTStreamConfig(
         broker_config=broker_config,
-        camera_config=camera_config,
+        device_config=device_config,
         analytics_mqtt_data_source_key=streams[0] if streams else None,
         message_callback=default_message_callback
     )
@@ -91,7 +91,7 @@ def monitor(camera_ip, username, password, broker, port, streams, record, durati
         manager.start()
         if record:
             Path("recordings").mkdir(exist_ok=True)
-            manager.start_recording("recordings/camera_recording.jsonl")
+            manager.start_recording("recordings/device_recording.jsonl")
         
         if duration > 0:
             asyncio.get_event_loop().run_until_complete(asyncio.sleep(duration))

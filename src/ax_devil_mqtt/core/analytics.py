@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional, Dict, Any, List
-from ax_devil_device_api import Client, CameraConfig
+from ax_devil_device_api import Client, DeviceConfig
 from ax_devil_device_api.features.mqtt_client import BrokerConfig, MqttStatus
 from ax_devil_device_api.features.analytics_mqtt import PublisherConfig, DataSource
 import uuid
@@ -24,20 +24,20 @@ class TemporaryAnalyticsMQTTDataStream:
     - Configuring analytics publishers
     - Managing stream state and cleanup
     
-    It uses the ax_devil library for all camera interactions and maintains
+    It uses the ax_devil library for all device interactions and maintains
     state to ensure proper cleanup when the stream is destroyed.
     """
     
     def __init__(self, 
-                 camera_config: CameraConfig,
+                 device_config: DeviceConfig,
                  broker_config: BrokerConfig,
                  topic: str = "analytics",
                  analytics_data_source_key: str = "com.axis.analytics_scene_description.v0.beta#1"):
         """
-        Initialize analytics stream with camera and MQTT configuration.
+        Initialize analytics stream with device and MQTT configuration.
         
         Args:
-            camera_config: CameraConfig instance for camera connection
+            device_config: DeviceConfig instance for device connection
             broker_config: BrokerConfig instance for MQTT broker settings
             topic: Base topic for analytics messages
             analytics_data_source_key: Analytics data source identifier
@@ -45,7 +45,7 @@ class TemporaryAnalyticsMQTTDataStream:
         Raises:
             RuntimeError: If stream setup or mqtt client setup fails
         """
-        self.client = Client(camera_config)
+        self.client = Client(device_config)
         self._cleanup_done = False
         
         self._initial_mqtt_status = self._capture_mqtt_current_state()
@@ -53,7 +53,7 @@ class TemporaryAnalyticsMQTTDataStream:
         self.topics = None
         
         result = self.client.mqtt_client.configure(broker_config)
-        if not result.success:
+        if not result.is_success:
             raise RuntimeError(f"Failed to configure MQTT broker: {result.error}")
 
         if not self._setup_analytics(analytics_data_source_key, topic, broker_config.device_topic_prefix or ""):
@@ -62,7 +62,7 @@ class TemporaryAnalyticsMQTTDataStream:
 
         if self._initial_mqtt_status.state != MqttStatus.STATE_ACTIVE:
             result = self.client.mqtt_client.activate()
-            if not result.success:
+            if not result.is_success:
                 self._restore_state()
                 raise RuntimeError(f"Failed to activate MQTT client: {result.error}")
 
@@ -90,15 +90,15 @@ class TemporaryAnalyticsMQTTDataStream:
         """
         try:
             mqtt_status = self.client.mqtt_client.get_status()
-            if not mqtt_status.success:
+            if not mqtt_status.is_success:
                 return None
                 
             sources = self.client.analytics_mqtt.get_data_sources()
-            if not sources.success:
+            if not sources.is_success:
                 return None
                 
             publishers = self.client.analytics_mqtt.list_publishers()
-            if not publishers.success:
+            if not publishers.is_success:
                 return None
                 
             return AnalyticsMQTTConfiguration(
@@ -124,7 +124,7 @@ class TemporaryAnalyticsMQTTDataStream:
             MqttStatus containing current MQTT state
         """
         mqtt_client_status = self.client.mqtt_client.get_status()
-        if not mqtt_client_status.success:
+        if not mqtt_client_status.is_success:
             raise RuntimeError(f"Failed to get MQTT status: {mqtt_client_status.error}")
         return mqtt_client_status.data
 
@@ -161,7 +161,7 @@ class TemporaryAnalyticsMQTTDataStream:
         self.topics = [our_topic]
 
         publishers = self.client.analytics_mqtt.list_publishers()
-        if not publishers.success:
+        if not publishers.is_success:
             return False
 
         # Check for existing compatible publisher
@@ -186,7 +186,7 @@ class TemporaryAnalyticsMQTTDataStream:
         )
         
         result = self.client.analytics_mqtt.create_publisher(config)
-        return result.success
+        return result.is_success
 
     def __del__(self):
         """Ensure cleanup when object is destroyed."""
@@ -200,7 +200,7 @@ if __name__ == "__main__":
     
     try:
         # Example usage with explicit configuration
-        camera_config = CameraConfig.http(
+        device_config = DeviceConfig.http(
             host=os.getenv("AX_DEVIL_TARGET_ADDR"),
             username=os.getenv("AX_DEVIL_TARGET_USER"),
             password=os.getenv("AX_DEVIL_TARGET_PASS"),
@@ -216,7 +216,7 @@ if __name__ == "__main__":
         )
         
         device = TemporaryAnalyticsMQTTDataStream(
-            camera_config=camera_config,
+            device_config=device_config,
             broker_config=broker_config,
             analytics_data_source_key="com.axis.analytics_scene_description.v0.beta#1"
         )
