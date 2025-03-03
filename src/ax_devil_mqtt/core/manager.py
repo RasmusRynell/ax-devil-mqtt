@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional
 from concurrent.futures import ThreadPoolExecutor
 import logging
 from dataclasses import dataclass
+import time
 
 from ax_devil_device_api import DeviceConfig
 from ax_devil_device_api.features.mqtt_client import BrokerConfig
@@ -22,8 +23,6 @@ class MessageProcessor:
         self.callback = callback
         self._executor = ThreadPoolExecutor(max_workers=worker_threads)
         self._stop_event = threading.Event()
-        self._worker_threads = []
-        self._shutdown_lock = threading.Lock()  # Add lock for shutdown coordination
 
     def process_message(self, message: Dict[str, Any]):
         """Process a message using the provided callback."""
@@ -32,49 +31,38 @@ class MessageProcessor:
 
         try:
             if asyncio.iscoroutinefunction(self.callback):
-                try:
-                    loop = asyncio.get_event_loop()
-                except RuntimeError:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                loop.run_until_complete(self.callback(message))
+                asyncio.run(self.callback(message))
             else:
                 self.callback(message)
         except Exception as e:
-            logger.error(f"Error in message callback: {e}")
+            logger.error(
+                f"Error in message callback: {str(e)}. "
+                f"Message topic: {message.get('topic', 'unknown')}, "
+                f"Message size: {len(str(message))} bytes"
+            )
+            raise  # Re-raise to let the executor handle the failure
 
-    def worker_loop(self, message_queue):
-        """Worker thread for processing messages."""
-        while not self._stop_event.is_set():
-            message = message_queue.get_message(timeout=1.0)
-            if message:
-                # Check if we can still submit tasks
-                with self._shutdown_lock:
-                    if not self._stop_event.is_set():
-                        try:
-                            self._executor.submit(self.process_message, message)
-                        except RuntimeError:
-                            # Executor is shut down, exit the loop
-                            break
-
-    def start(self, message_queue):
-        """Start message processing workers."""
-        for _ in range(self._executor._max_workers):
-            worker = threading.Thread(target=self.worker_loop, args=(message_queue,), daemon=True)
-            worker.start()
-            self._worker_threads.append(worker)
+    def submit_message(self, message: Dict[str, Any]) -> None:
+        """Submit a message for processing."""
+        if self._stop_event.is_set():
+            return
+            
+        try:
+            self._executor.submit(self.process_message, message)
+        except RuntimeError:
+            logger.warning("Executor is shutting down, message dropped")
 
     def stop(self):
         """Stop message processing."""
-        with self._shutdown_lock:
-            self._stop_event.set()
-        
-        # Wait for workers to finish their current tasks
-        for worker in self._worker_threads:
-            worker.join(timeout=2)
+        if self._stop_event.is_set():
+            return
             
-        # Now safe to shutdown the executor
-        self._executor.shutdown(wait=True)
+        self._stop_event.set()
+        try:
+            self._executor.shutdown(wait=True)
+        except Exception as e:
+            logger.error(f"Error during executor shutdown: {e}")
+        logger.info("Message processor stopped")
 
 class MQTTStreamManager:
     """
@@ -141,12 +129,7 @@ class MQTTStreamManager:
             return
 
         try:
-            self._subscriber.start()
-            
-            if self._publisher:
-                self._publisher.start()
-            
-            self._message_processor.start(self._subscriber)
+            self._subscriber.start(self._message_processor.submit_message)
             self._state.is_running = True
             logger.info("Stream manager started successfully")
         except Exception as e:
@@ -161,8 +144,8 @@ class MQTTStreamManager:
             return
 
         try:
-            self._message_processor.stop()
             self._subscriber.stop()
+            self._message_processor.stop()
             
             if self._publisher:
                 self._publisher.stop_replay()

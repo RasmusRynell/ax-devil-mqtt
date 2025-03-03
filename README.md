@@ -107,11 +107,6 @@ This script connects to an Axis device and records MQTT analytics data for a spe
 - `AX_DEVIL_TARGET_USER`: Device username
 - `AX_DEVIL_TARGET_PASS`: Device password
 
-Options:
-- `--host`: MQTT broker host IP (required)
-- `--port`: MQTT broker port (default: 1883)
-- `--duration`: Recording duration in seconds (default: 10)
-
 Recordings are saved to the `recordings` directory with timestamps in the filename.
 
 #### Replaying Recorded Data
@@ -122,11 +117,6 @@ python src/ax_devil_mqtt/examples/replay.py \
 ```
 
 This script replays previously recorded MQTT messages through an MQTT broker. It's useful for testing and development without requiring a physical device.
-
-Options:
-- `--host`: MQTT broker host IP (required)
-- `--port`: MQTT broker port (default: 1883)
-- `recording_path`: Path to the recording file (required)
 
 ## License
 

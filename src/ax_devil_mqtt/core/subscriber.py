@@ -13,7 +13,6 @@ class MQTTSubscriber:
     - Managing MQTT connection for subscribing
     - Processing incoming messages
     - Maintaining subscription state
-    - Providing message queue interface
     - Recording messages to file for debugging/testing
     """
     def __init__(
@@ -28,16 +27,14 @@ class MQTTSubscriber:
         self._topics = topics
         self._connected = False
         self._stop_event = threading.Event()
-        
-        # Message handling
-        self._message_queue = queue.Queue(maxsize=max_queue_size)
-        self._client = mqtt.Client()
+        self._message_callback = None
         
         # Recording functionality
         self._recording_enabled = False
         self._recording_file = None
         
-        # Set up callbacks
+        # Set up MQTT client
+        self._client = mqtt.Client()
         self._client.on_connect = self._on_connect
         self._client.on_message = self._on_message
         self._client.on_disconnect = self._on_disconnect
@@ -79,10 +76,9 @@ class MQTTSubscriber:
                 self._recording_file.write('\n')
                 self._recording_file.flush()
                 
-            # Add to queue
-            self._message_queue.put_nowait(msg)
-        except queue.Full:
-            print(f"Warning: Message queue full, dropping message on topic {message.topic}")
+            # Forward to callback if set
+            if self._message_callback:
+                self._message_callback(msg)
         except Exception as e:
             print(f"Error processing message: {e}")
 
@@ -92,8 +88,15 @@ class MQTTSubscriber:
         if rc != 0:
             print(f"Unexpected disconnection (code {rc})")
 
-    def start(self):
-        """Start the subscriber"""
+    def start(self, message_callback: Optional[Callable[[Dict[str, Any]], None]] = None):
+        """
+        Start the subscriber with an optional message callback.
+        
+        Args:
+            message_callback: Optional callback function to handle messages
+        """
+        self._message_callback = message_callback
+        
         if not self._connected:
             print(f"Connecting to MQTT broker at {self._broker_host}:{self._broker_port}")
             self._client.connect(self._broker_host, self._broker_port)
@@ -107,21 +110,7 @@ class MQTTSubscriber:
         self._client.loop_stop()
         self._client.disconnect()
         self._connected = False
-
-    def get_message(self, timeout: Optional[float] = 1.0) -> Optional[Dict[str, Any]]:
-        """
-        Get next message from the queue.
-        
-        Args:
-            timeout: How long to wait for a message (None for indefinite)
-            
-        Returns:
-            Message dictionary or None if queue is empty
-        """
-        try:
-            return self._message_queue.get(timeout=timeout)
-        except queue.Empty:
-            return None
+        self._message_callback = None
 
     def is_connected(self) -> bool:
         """Check if connected to broker"""

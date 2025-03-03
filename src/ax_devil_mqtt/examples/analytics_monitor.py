@@ -149,6 +149,8 @@ class DeviceExample:
 if __name__ == "__main__":
     args = parse_args()
     
+    assert args.host != "localhost", "Cannot use localhost as broker host since camera has to be configured. Find your ip and use that."
+
     example = DeviceExample(
         broker_host=args.host,
         broker_port=args.port,
