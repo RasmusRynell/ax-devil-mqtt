@@ -79,13 +79,12 @@ class ReplayExample:
         )
         
         self.manager = MQTTStreamManager(config)
-        self.manager.start()
 
     async def replay_recording(self):
         """Replay messages from a recorded session."""
         try:
             print(f"Starting replay of {self.recording_path}...")
-            self.manager.start_replay(self.recording_path)
+            self.manager.start()
             print("Replay started. Messages will be logged via the callback.")
             
             # Keep running until interrupted
@@ -96,7 +95,7 @@ class ReplayExample:
             print(f"Error during replay: {e}")
         finally:
             if self.manager:
-                self.manager.stop_replay()
+                self.manager.stop()
 
     def signal_handler(self, sig, frame):
         """Handle graceful shutdown on interrupt signal."""

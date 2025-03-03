@@ -5,7 +5,6 @@ import argparse
 import os
 from ax_devil_mqtt.core.manager import MQTTStreamManager
 from ax_devil_mqtt.core.types import MQTTStreamConfig
-from ax_devil_mqtt.core.publisher import MQTTPublisher
 import json
 import time
 from datetime import datetime
@@ -54,7 +53,6 @@ class DeviceExample:
     def __init__(self, broker_host: str, broker_port: int = 1883, duration: int = 10):
         self.running = True
         self.manager = None
-        self.publisher = None
         self.duration = duration
         self.broker_config = BrokerConfig(
             host=broker_host,
@@ -81,7 +79,6 @@ class DeviceExample:
         )
         
         self.manager = MQTTStreamManager(config)
-        self.manager.start()
 
     async def timed_recording(self):
         """
@@ -102,13 +99,13 @@ class DeviceExample:
         os.makedirs("recordings", exist_ok=True)
         
         print(f"Starting recording to {filepath}")
-        self.manager.start_recording(filepath)
+        self.manager.start(recording_file=filepath)
         
         print(f"Recording for {self.duration} seconds...")
         await asyncio.sleep(self.duration)
         
         print("Stopping recording")
-        self.manager.stop_recording()
+        self.manager.stop()
         
         print("\nRecording completed!")
         print(f"To replay this recording, run:")

@@ -10,7 +10,7 @@ from ax_devil_device_api import DeviceConfig
 from ax_devil_device_api.features.mqtt_client import BrokerConfig
 
 from .subscriber import MQTTSubscriber
-from .publisher import MQTTPublisher
+from .replay import ReplayHandler
 from .analytics_mqtt_stream_tmp import TemporaryAnalyticsMQTTDataStream
 from .types import SimulatorConfig, MQTTStreamConfig, MQTTStreamState
 
@@ -75,61 +75,60 @@ class MQTTStreamManager:
         self._config.validate()
         
         self._state = MQTTStreamState()
-        self._publisher = None
-        self._analytics_stream = None
-        self._subscriber = None
-        
         self._message_processor = MessageProcessor(
             config.message_callback, 
             config.worker_threads
         )
         
-        self._setup_stream()
-
-    def _setup_stream(self):
-        """Setup the appropriate stream based on configuration."""
+        # Initialize the appropriate handler based on config
+        self._handler = self._create_handler()
+        
+    def _create_handler(self):
+        """Create the appropriate handler based on configuration."""
         if self._config.device_config:
-            self._setup_device_mode()
-        else:
-            self._setup_simulator_mode()
-
-        # Setup subscriber
-        self._subscriber = MQTTSubscriber(
-            broker_host=self._config.broker_config.host,
-            broker_port=self._config.broker_config.port,
-            topics=self._state.current_topics,
-            max_queue_size=self._config.max_queue_size
-        )
-
-    def _setup_device_mode(self):
-        """Setup stream for device mode."""
-        if self._config.analytics_mqtt_data_source_key:
-            self._analytics_stream = TemporaryAnalyticsMQTTDataStream(
-                device_config=self._config.device_config,
-                broker_config=self._config.broker_config,
-                analytics_data_source_key=self._config.analytics_mqtt_data_source_key
+            # Device mode - use subscriber with analytics or raw topics
+            if self._config.analytics_mqtt_data_source_key:
+                analytics_stream = TemporaryAnalyticsMQTTDataStream(
+                    device_config=self._config.device_config,
+                    broker_config=self._config.broker_config,
+                    analytics_data_source_key=self._config.analytics_mqtt_data_source_key
+                )
+                topics = analytics_stream.topics
+            else:
+                topics = self._config.raw_mqtt_topics
+                
+            return MQTTSubscriber(
+                broker_host=self._config.broker_config.host,
+                broker_port=self._config.broker_config.port,
+                topics=topics,
+                max_queue_size=self._config.max_queue_size
             )
-            self._state.current_topics = self._analytics_stream.topics
+            
         else:
-            self._state.current_topics = self._config.raw_mqtt_topics
+            # Simulator mode - use ReplayHandler
+            if not self._config.simulator_config or not self._config.simulator_config.recording_file:
+                raise ValueError("Simulator mode requires a recording file")
+            return ReplayHandler(self._message_processor.submit_message)
 
-    def _setup_simulator_mode(self):
-        """Setup stream for simulator mode."""
-        self._publisher = MQTTPublisher(
-            broker_host=self._config.broker_config.host,
-            broker_port=self._config.broker_config.port
-        )
-        # In simulator mode, subscribe to all topics
-        self._state.current_topics = ["#"]
-
-    def start(self):
-        """Start the stream manager."""
+    def start(self, recording_file: Optional[str] = None):
+        """
+        Start the stream manager.
+        
+        Args:
+            recording_file: Optional file path to record messages to. Only valid in device mode.
+        """
         if self._state.is_running:
             logger.warning("Stream manager is already running")
             return
 
         try:
-            self._subscriber.start(self._message_processor.submit_message)
+            if isinstance(self._handler, MQTTSubscriber):
+                if recording_file:
+                    self._handler.start_recording(recording_file)
+                self._handler.start(self._message_processor.submit_message)
+            elif isinstance(self._handler, ReplayHandler):
+                self._handler.start_replay(self._config.simulator_config.recording_file)
+                
             self._state.is_running = True
             logger.info("Stream manager started successfully")
         except Exception as e:
@@ -144,77 +143,16 @@ class MQTTStreamManager:
             return
 
         try:
-            self._subscriber.stop()
+            if isinstance(self._handler, MQTTSubscriber):
+                self._handler.stop_recording()
+                self._handler.stop()
+            elif isinstance(self._handler, ReplayHandler):
+                self._handler.stop_replay()
+                
             self._message_processor.stop()
-            
-            if self._publisher:
-                self._publisher.stop_replay()
-                self._publisher.stop()
-            
             self._state.is_running = False
             logger.info("Stream manager stopped successfully")
         except Exception as e:
             self._state.error_state = str(e)
             logger.error(f"Error during stream manager shutdown: {e}")
-            raise
-
-    def start_recording(self, filepath: str):
-        """Enable message recording to specified file."""
-        if self._state.is_recording:
-            logger.warning("Recording is already in progress")
-            return
-
-        try:
-            self._subscriber.start_recording(filepath)
-            self._state.is_recording = True
-            logger.info(f"Started recording to {filepath}")
-        except Exception as e:
-            self._state.error_state = str(e)
-            logger.error(f"Failed to start recording: {e}")
-            raise
-
-    def stop_recording(self):
-        """Disable message recording."""
-        if not self._state.is_recording:
-            return
-
-        try:
-            self._subscriber.stop_recording()
-            self._state.is_recording = False
-            logger.info("Recording stopped")
-        except Exception as e:
-            self._state.error_state = str(e)
-            logger.error(f"Failed to stop recording: {e}")
-            raise
-
-    def start_replay(self, recording_file: str) -> None:
-        """Start replaying messages from a recording file."""
-        if not self._publisher:
-            raise RuntimeError("Publisher not available - manager was not initialized with simulator config")
-        
-        if self._state.is_replaying:
-            logger.warning("Replay is already in progress")
-            return
-
-        try:
-            self._publisher.replay_recording(recording_file)
-            self._state.is_replaying = True
-            logger.info(f"Started replay from {recording_file}")
-        except Exception as e:
-            self._state.error_state = str(e)
-            logger.error(f"Failed to start replay: {e}")
-            raise
-
-    def stop_replay(self) -> None:
-        """Stop the current replay if one is in progress."""
-        if not self._state.is_replaying:
-            return
-
-        try:
-            self._publisher.stop_replay()
-            self._state.is_replaying = False
-            logger.info("Replay stopped")
-        except Exception as e:
-            self._state.error_state = str(e)
-            logger.error(f"Failed to stop replay: {e}")
             raise
