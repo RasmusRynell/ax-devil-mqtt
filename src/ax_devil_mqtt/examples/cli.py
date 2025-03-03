@@ -24,9 +24,12 @@ def device():
     pass
 
 @device.command("monitor")
-@click.option("--device-ip", required=True, help="IP address of the device")
-@click.option("--username", required=True, help="Device username")
-@click.option("--password", required=True, help="Device password")
+@click.option("--device-ip", default=lambda: os.getenv('AX_DEVIL_TARGET_ADDR'),
+                     required=False, help='Device IP address or hostname')
+@click.option("--username", default=lambda: os.getenv('AX_DEVIL_TARGET_USER'),
+                     required=False, help='Username for authentication')
+@click.option("--password", default=lambda: os.getenv('AX_DEVIL_TARGET_PASS'),
+                     required=False, help='Password for authentication')
 @click.option("--broker", "-b", required=True, help="MQTT broker address")
 @click.option("--port", "-p", default=1883, help="MQTT broker port")
 @click.option("--streams", "-s", multiple=True, help="Analytics streams to monitor")
@@ -34,6 +37,8 @@ def device():
 @click.option("--duration", "-d", default=0, help="Monitoring duration in seconds (0 for infinite)")
 def monitor(device_ip, username, password, broker, port, streams, record, duration):
     """Monitor specific analytics streams"""
+    assert broker != "localhost", "Cannot use localhost as broker host since camera has to be configured. Find your ip and use that."
+
     device_config = DeviceConfig.http(
         host=device_ip,
         username=username,
@@ -86,6 +91,8 @@ def simulation():
 @click.option("--port", "-p", default=1883, help="MQTT broker port")
 def replay(recording_file, broker, port):
     """Replay a recorded analytics session"""
+    assert broker != "localhost", "Cannot use localhost as broker host since camera has to be configured. Find your ip and use that."
+
     broker_config = BrokerConfig(
         host=broker,
         port=port,
