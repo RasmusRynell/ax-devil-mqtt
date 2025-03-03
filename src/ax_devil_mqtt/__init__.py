@@ -7,7 +7,7 @@ __version__ = "0.1.0"
 from .core.manager import MQTTStreamManager
 from .core.publisher import MQTTPublisher
 from .core.subscriber import MQTTSubscriber
-from .core.analytics import TemporaryAnalyticsMQTTDataStream
+from .core.analytics_mqtt_stream_tmp import TemporaryAnalyticsMQTTDataStream
 from .core.types import SimulatorConfig, MQTTStreamConfig
 
 __all__ = [

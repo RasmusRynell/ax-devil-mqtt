@@ -11,7 +11,7 @@ from ax_devil_device_api.features.mqtt_client import BrokerConfig
 
 from .subscriber import MQTTSubscriber
 from .publisher import MQTTPublisher
-from .analytics import TemporaryAnalyticsMQTTDataStream
+from .analytics_mqtt_stream_tmp import TemporaryAnalyticsMQTTDataStream
 from .types import SimulatorConfig, MQTTStreamConfig, MQTTStreamState
 
 logger = logging.getLogger(__name__)

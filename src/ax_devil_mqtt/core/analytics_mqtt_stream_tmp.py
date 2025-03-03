@@ -80,41 +80,6 @@ class TemporaryAnalyticsMQTTDataStream:
             print(f"Warning: Error during cleanup: {e}")
 
 
-    def get_current_configuration(self) -> Optional[AnalyticsMQTTConfiguration]:
-        """
-        Get the current configuration and status of the analytics stream.
-        
-        Returns:
-            AnalyticsMQTTConfiguration if successful, None if any component fails
-        """
-        try:
-            mqtt_status = self.client.mqtt_client.get_status()
-            if not mqtt_status.is_success:
-                return None
-                
-            sources = self.client.analytics_mqtt.get_data_sources()
-            if not sources.is_success:
-                return None
-                
-            publishers = self.client.analytics_mqtt.list_publishers()
-            if not publishers.is_success:
-                return None
-                
-            return AnalyticsMQTTConfiguration(
-                mqtt_status=mqtt_status.data,
-                mqtt_broker={
-                    'host': mqtt_status.data.config.host if mqtt_status.data.config else None,
-                    'port': mqtt_status.data.config.port if mqtt_status.data.config else None,
-                    'status': mqtt_status.data.state,
-                    'connected_to': mqtt_status.data.connected_to
-                },
-                analytics_sources=sources.data,
-                analytics_publishers=publishers.data
-            )
-        except Exception as e:
-            print(f"Failed to get analytics stream configuration: {e}")
-            return None
-
     def _capture_mqtt_current_state(self) -> MqttStatus:
         """
         Capture the current MQTT state.
