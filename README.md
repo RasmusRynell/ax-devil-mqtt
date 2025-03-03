@@ -23,7 +23,15 @@ pip install .
 
 Requires Python ≥ 3.8 and an MQTT broker (e.g., Mosquitto, HiveMQ).
 
-### Basic Usage
+### Environment Variables
+For an easier experience, you can set the following environment variables:
+```bash
+export AX_DEVIL_TARGET_ADDR=<device-ip>
+export AX_DEVIL_TARGET_USER=<username>
+export AX_DEVIL_TARGET_PASS=<password>
+```
+
+### Example Usage
 
 ```python
 from ax_devil_mqtt.core.manager import MQTTStreamManager
@@ -43,6 +51,82 @@ manager = MQTTStreamManager(
 
 manager.start()
 ```
+
+### CLI Usage Examples
+
+The package provides a command-line interface for easy interaction with devices and analytics streams.
+
+#### Device Commands
+
+##### List Available Streams (using ax-devil-device-api)
+```bash
+ax-devil-device-api-analytics-mqtt \
+    --device-ip 192.168.1.81 \
+    --username root \
+    --password fusion \
+    sources
+```
+
+##### Monitor Analytics Streams
+```bash
+ax-devil-mqtt device monitor \
+    --device-ip 192.168.1.200 \
+    --username root \
+    --password pass \
+    --broker localhost \
+    --port 1883 \
+    --streams "com.axis.analytics_scene_description.v0.beta#1" \
+    --record \
+    --duration 3600
+```
+
+#### Simulation Commands
+
+##### Replay Recorded Analytics
+```bash
+ax-devil-mqtt simulation replay recordings/device_recording.jsonl \
+    --broker localhost \
+    --port 1883
+```
+
+
+### Example Scripts
+
+The package includes example scripts demonstrating key functionality:
+
+#### Recording Analytics Data
+```bash
+python src/ax_devil_mqtt/examples/analytics_monitor.py \
+    --host <broker_ip> \
+    --port 1883 \
+    --duration 10
+```
+
+This script connects to an Axis device and records MQTT analytics data for a specified duration. It requires the following environment variables:
+- `AX_DEVIL_TARGET_ADDR`: IP address of the target device
+- `AX_DEVIL_TARGET_USER`: Device username
+- `AX_DEVIL_TARGET_PASS`: Device password
+
+Options:
+- `--host`: MQTT broker host IP (required)
+- `--port`: MQTT broker port (default: 1883)
+- `--duration`: Recording duration in seconds (default: 10)
+
+Recordings are saved to the `recordings` directory with timestamps in the filename.
+
+#### Replaying Recorded Data
+```bash
+python src/ax_devil_mqtt/examples/replay.py \
+    --host <broker_ip> \
+    recordings/mqtt_recording_20240321_123456.jsonl
+```
+
+This script replays previously recorded MQTT messages through an MQTT broker. It's useful for testing and development without requiring a physical device.
+
+Options:
+- `--host`: MQTT broker host IP (required)
+- `--port`: MQTT broker port (default: 1883)
+- `recording_path`: Path to the recording file (required)
 
 ## License
 

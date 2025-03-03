@@ -66,7 +66,6 @@ class TemporaryAnalyticsMQTTDataStream:
                 self._restore_state()
                 raise RuntimeError(f"Failed to activate MQTT client: {result.error}")
 
-        # Register cleanup with atexit instead of relying on __del__
         atexit.register(self.cleanup)
 
     def cleanup(self):
@@ -78,7 +77,6 @@ class TemporaryAnalyticsMQTTDataStream:
             self._restore_state()
             self._cleanup_done = True
         except Exception as e:
-            # Log but don't raise during cleanup
             print(f"Warning: Error during cleanup: {e}")
 
 
@@ -194,64 +192,3 @@ class TemporaryAnalyticsMQTTDataStream:
         if not self._cleanup_done and sys and sys.modules:
             self.cleanup()
         self.client.close()
-
-
-if __name__ == "__main__":
-    import os
-    from pprint import pprint
-    
-    try:
-        # Example usage with explicit configuration
-        device_config = DeviceConfig.http(
-            host=os.getenv("AX_DEVIL_TARGET_ADDR"),
-            username=os.getenv("AX_DEVIL_TARGET_USER"),
-            password=os.getenv("AX_DEVIL_TARGET_PASS"),
-        )
-        
-        broker_config = BrokerConfig(
-            host="192.168.1.57",
-            port=1883,
-            device_topic_prefix="ax_devil_tmp/",
-            use_tls=False,
-            clean_session=True,
-            auto_reconnect=True
-        )
-        
-        device = TemporaryAnalyticsMQTTDataStream(
-            device_config=device_config,
-            broker_config=broker_config,
-            analytics_data_source_key="com.axis.analytics_scene_description.v0.beta#1"
-        )
-        
-        # Check configuration
-        config = device.get_current_configuration()
-        if config:
-            print("\nDevice Configuration:")
-            print("-" * 50)
-            print(f"MQTT Status: {config.mqtt_status.state}")
-            print(f"MQTT Broker: {config.mqtt_broker['host']}:{config.mqtt_broker['port']}")
-            if config.mqtt_broker['connected_to']:
-                print(f"Connected To: {config.mqtt_broker['connected_to']}")
-            
-            print(f"\nAnalytics Sources: {len(config.analytics_sources)}")
-            for source in config.analytics_sources:
-                print(f"- {source.name} ({source.key})")
-            
-            print(f"\nConfigured Publishers: {len(config.analytics_publishers)}")
-            for pub in config.analytics_publishers:
-                print(f"- {pub.mqtt_topic} <- {pub.data_source_key}")
-            
-            print("\nSetup Successful!")
-            import time
-            time.sleep(10)
-            sys.exit(0)
-        else:
-            print("Failed to get device configuration")
-            sys.exit(1)
-            
-    except RuntimeError as e:
-        print(f"Setup failed: {e}")
-        sys.exit(1)
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        sys.exit(1)

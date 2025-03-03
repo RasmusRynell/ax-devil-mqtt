@@ -23,36 +23,6 @@ def device():
     """Commands for interacting with live devices"""
     pass
 
-@device.command("list-streams")
-@click.option("--device-ip", required=True, help="IP address of the device")
-@click.option("--username", required=True, help="Device username")
-@click.option("--password", required=True, help="Device password")
-def list_streams(device_ip, username, password):
-    """List available analytics streams from the device"""
-    device_config = DeviceConfig.http(
-        host=device_ip,
-        username=username,
-        password=password
-    )
-    
-    broker_config = BrokerConfig(
-        host="localhost",  # Temporary broker for listing
-        port=1883,
-        use_tls=False,
-        clean_session=True,
-        auto_reconnect=True
-    )
-    
-    config = MQTTStreamConfig(
-        broker_config=broker_config,
-        device_config=device_config
-    )
-    
-    manager = MQTTStreamManager(config)
-    streams = manager.get_available_streams()
-    for stream in streams:
-        print(f"- {stream}")
-
 @device.command("monitor")
 @click.option("--device-ip", required=True, help="IP address of the device")
 @click.option("--username", required=True, help="Device username")
