@@ -3,35 +3,37 @@ from typing import Callable, Dict, Any, Optional, List
 import threading
 import queue
 import json
-import os
 from datetime import datetime
+import logging
+import time
 
-class MQTTSubscriber:
+from .types import MessageHandler
+
+logger = logging.getLogger(__name__)
+
+class MQTTSubscriber(MessageHandler):
     """
     Handles MQTT subscriptions and message processing.
     This class is responsible for:
     - Managing MQTT connection for subscribing
     - Processing incoming messages
     - Maintaining subscription state
-    - Recording messages to file for debugging/testing
     """
     def __init__(
         self,
         broker_host: str,
         broker_port: int,
         topics: List[str],
-        max_queue_size: int = 1000
+        max_queue_size: int = 1000,
+        message_callback: Optional[Callable[[Dict[str, Any]], None]] = None
     ):
         self._broker_host = broker_host
         self._broker_port = broker_port
         self._topics = topics
         self._connected = False
         self._stop_event = threading.Event()
-        self._message_callback = None
-        
-        # Recording functionality
-        self._recording_enabled = False
-        self._recording_file = None
+        self._message_callback = message_callback
+        self._connection_error = None
         
         # Set up MQTT client
         self._client = mqtt.Client()
@@ -49,7 +51,8 @@ class MQTTSubscriber:
                 self._client.subscribe(topic)
         else:
             self._connected = False
-            raise ConnectionError(f"Failed to connect to MQTT broker with code {rc}")
+            logger.error(f"Failed to connect to MQTT broker with code {rc}")
+            self._connection_error = f"Failed to connect to MQTT broker with code {rc}"
 
     def _on_message(self, client, userdata, message):
         """Internal callback for handling incoming messages"""
@@ -69,13 +72,6 @@ class MQTTSubscriber:
             except json.JSONDecodeError:
                 pass  # Keep payload as string if not JSON
             
-            # Record message if enabled
-            if self._recording_enabled and self._recording_file:
-                # Write message to file immediately
-                json.dump(msg, self._recording_file)
-                self._recording_file.write('\n')
-                self._recording_file.flush()
-                
             # Forward to callback if set
             if self._message_callback:
                 self._message_callback(msg)
@@ -88,21 +84,34 @@ class MQTTSubscriber:
         if rc != 0:
             print(f"Unexpected disconnection (code {rc})")
 
-    def start(self, message_callback: Optional[Callable[[Dict[str, Any]], None]] = None):
+    def start(self):
         """
-        Start the subscriber with an optional message callback.
-        
-        Args:
-            message_callback: Optional callback function to handle messages
+        Start the subscriber.
         """
-        self._message_callback = message_callback
+        self._connection_error = None
         
         if not self._connected:
             print(f"Connecting to MQTT broker at {self._broker_host}:{self._broker_port}")
-            self._client.connect(self._broker_host, self._broker_port)
+            try:
+                self._client.connect(self._broker_host, self._broker_port)
+            except Exception as e:
+                logger.error(f"Error connecting to MQTT broker: {e}")
+                raise ConnectionError(f"Failed to connect to MQTT broker: {e}")
 
-        # Start MQTT loop in a separate thread
         self._client.loop_start()
+        
+        timeout = 5  # seconds
+        start_time = time.time()
+        
+        while not self._connected and time.time() - start_time < timeout:
+            if self._connection_error:
+                self._client.loop_stop()
+                raise ConnectionError(self._connection_error)
+            time.sleep(0.1)
+            
+        if not self._connected:
+            self._client.loop_stop()
+            raise ConnectionError("Timed out waiting for MQTT connection")
 
     def stop(self):
         """Stop the subscriber and clean up"""
@@ -127,27 +136,4 @@ class MQTTSubscriber:
         if self._connected:
             self._client.unsubscribe(topic)
         if topic in self._topics:
-            self._topics.remove(topic)
-
-    def start_recording(self, filepath: str):
-        """Start recording messages to file."""
-        if self._recording_enabled:
-            self.stop_recording()
-            
-        try:
-            # Open file in append mode
-            self._recording_file = open(filepath, 'a')
-            self._recording_enabled = True
-        except IOError as e:
-            raise IOError(f"Failed to open recording file: {e}")
-
-    def stop_recording(self):
-        """Stop recording and close file."""
-        self._recording_enabled = False
-        if self._recording_file:
-            self._recording_file.close()
-            self._recording_file = None
-
-    def __del__(self):
-        """Clean up resources."""
-        self.stop_recording() 
+            self._topics.remove(topic) 

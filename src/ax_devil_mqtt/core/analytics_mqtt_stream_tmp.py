@@ -4,7 +4,6 @@ from ax_devil_device_api import Client, DeviceConfig
 from ax_devil_device_api.features.mqtt_client import BrokerConfig, MqttStatus
 from ax_devil_device_api.features.analytics_mqtt import PublisherConfig, DataSource
 import uuid
-import atexit
 import sys
 
 @dataclass
@@ -65,20 +64,6 @@ class TemporaryAnalyticsMQTTDataStream:
             if not result.is_success:
                 self._restore_state()
                 raise RuntimeError(f"Failed to activate MQTT client: {result.error}")
-
-        atexit.register(self.cleanup)
-
-    def cleanup(self):
-        """Clean up resources and restore state."""
-        if self._cleanup_done:
-            return
-            
-        try:
-            self._restore_state()
-            self._cleanup_done = True
-        except Exception as e:
-            print(f"Warning: Error during cleanup: {e}")
-
 
     def _capture_mqtt_current_state(self) -> MqttStatus:
         """
@@ -151,6 +136,17 @@ class TemporaryAnalyticsMQTTDataStream:
         
         result = self.client.analytics_mqtt.create_publisher(config)
         return result.is_success
+
+    def cleanup(self):
+        """Clean up resources and restore state."""
+        if self._cleanup_done:
+            return
+            
+        try:
+            self._restore_state()
+            self._cleanup_done = True
+        except Exception as e:
+            print(f"Warning: Error during cleanup: {e}")
 
     def __del__(self):
         """Ensure cleanup when object is destroyed."""

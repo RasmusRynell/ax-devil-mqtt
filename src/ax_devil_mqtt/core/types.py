@@ -3,9 +3,28 @@ Shared types and configurations for the AX Devil MQTT package.
 """
 
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any, Callable, Union, Coroutine
+from typing import Optional, List, Dict, Any, Callable, Union, Coroutine, Protocol, runtime_checkable
+from abc import ABC, abstractmethod
 from ax_devil_device_api import DeviceConfig
 from ax_devil_device_api.features.mqtt_client import BrokerConfig
+
+# Define the common interface for message handlers
+class MessageHandler(ABC):
+    """
+    Abstract base class defining the interface for all message handlers.
+    Both MQTTSubscriber and ReplayHandler should implement this interface.
+    """
+    @abstractmethod
+    def start(self) -> None:
+        """
+        Start the message handler.
+        """
+        pass
+        
+    @abstractmethod
+    def stop(self) -> None:
+        """Stop the message handler and clean up resources."""
+        pass
 
 @dataclass
 class SimulatorConfig:

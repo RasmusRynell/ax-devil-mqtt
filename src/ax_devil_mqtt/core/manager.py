@@ -11,8 +11,9 @@ from ax_devil_device_api.features.mqtt_client import BrokerConfig
 
 from .subscriber import MQTTSubscriber
 from .replay import ReplayHandler
+from .recorder import MessageRecorder
 from .analytics_mqtt_stream_tmp import TemporaryAnalyticsMQTTDataStream
-from .types import SimulatorConfig, MQTTStreamConfig, MQTTStreamState
+from .types import SimulatorConfig, MQTTStreamConfig, MQTTStreamState, MessageHandler
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ class MessageProcessor:
         self.callback = callback
         self._executor = ThreadPoolExecutor(max_workers=worker_threads)
         self._stop_event = threading.Event()
+        self._lock = threading.Lock()
 
     def process_message(self, message: Dict[str, Any]):
         """Process a message using the provided callback."""
@@ -44,13 +46,14 @@ class MessageProcessor:
 
     def submit_message(self, message: Dict[str, Any]) -> None:
         """Submit a message for processing."""
-        if self._stop_event.is_set():
-            return
-            
-        try:
-            self._executor.submit(self.process_message, message)
-        except RuntimeError:
-            logger.warning("Executor is shutting down, message dropped")
+        with self._lock:
+            if self._stop_event.is_set():
+                return
+                
+            try:
+                self._executor.submit(self.process_message, message)
+            except RuntimeError:
+                logger.warning("Executor is shutting down, message dropped")
 
     def stop(self):
         """Stop message processing."""
@@ -75,25 +78,33 @@ class MQTTStreamManager:
         self._config.validate()
         
         self._state = MQTTStreamState()
+        
+        # Set up the message processing chain
         self._message_processor = MessageProcessor(
             config.message_callback, 
             config.worker_threads
         )
         
-        # Initialize the appropriate handler based on config
-        self._handler = self._create_handler()
+        # Create recorder as an intermediary component
+        self._recorder = MessageRecorder(self._message_processor.submit_message)
         
-    def _create_handler(self):
+        # Store analytics stream if created
+        self._analytics_stream = None
+        
+        # Initialize the appropriate handler based on config
+        self._handler: MessageHandler = self._create_handler()
+        
+    def _create_handler(self) -> MessageHandler:
         """Create the appropriate handler based on configuration."""
         if self._config.device_config:
             # Device mode - use subscriber with analytics or raw topics
             if self._config.analytics_mqtt_data_source_key:
-                analytics_stream = TemporaryAnalyticsMQTTDataStream(
+                self._analytics_stream = TemporaryAnalyticsMQTTDataStream(
                     device_config=self._config.device_config,
                     broker_config=self._config.broker_config,
                     analytics_data_source_key=self._config.analytics_mqtt_data_source_key
                 )
-                topics = analytics_stream.topics
+                topics = self._analytics_stream.topics
             else:
                 topics = self._config.raw_mqtt_topics
                 
@@ -101,14 +112,18 @@ class MQTTStreamManager:
                 broker_host=self._config.broker_config.host,
                 broker_port=self._config.broker_config.port,
                 topics=topics,
-                max_queue_size=self._config.max_queue_size
+                max_queue_size=self._config.max_queue_size,
+                message_callback=self._recorder.record_message
             )
             
         else:
             # Simulator mode - use ReplayHandler
             if not self._config.simulator_config or not self._config.simulator_config.recording_file:
                 raise ValueError("Simulator mode requires a recording file")
-            return ReplayHandler(self._message_processor.submit_message)
+            handler = ReplayHandler(self._recorder.record_message)
+            # Store the recording file so it can be accessed later
+            handler._recording_file = self._config.simulator_config.recording_file
+            return handler
 
     def start(self, recording_file: Optional[str] = None):
         """
@@ -122,14 +137,15 @@ class MQTTStreamManager:
             return
 
         try:
-            if isinstance(self._handler, MQTTSubscriber):
-                if recording_file:
-                    self._handler.start_recording(recording_file)
-                self._handler.start(self._message_processor.submit_message)
-            elif isinstance(self._handler, ReplayHandler):
-                self._handler.start_replay(self._config.simulator_config.recording_file)
-                
+            # Start recording if a file path is provided
+            if recording_file:
+                self._recorder.start_recording(recording_file)
+                self._state.is_recording = True
+            
+            # Start the message handler
+            self._handler.start()
             self._state.is_running = True
+            
             logger.info("Stream manager started successfully")
         except Exception as e:
             self._state.error_state = str(e)
@@ -143,14 +159,27 @@ class MQTTStreamManager:
             return
 
         try:
-            if isinstance(self._handler, MQTTSubscriber):
-                self._handler.stop_recording()
-                self._handler.stop()
-            elif isinstance(self._handler, ReplayHandler):
-                self._handler.stop_replay()
-                
+            # Stop the handler
+            self._handler.stop()
+            
+            # Stop recording if active
+            if self._state.is_recording:
+                self._recorder.stop_recording()
+                self._state.is_recording = False
+            
+            # Clean up analytics stream if it exists
+            if self._analytics_stream:
+                try:
+                    self._analytics_stream.cleanup()
+                    self._analytics_stream = None
+                except Exception as e:
+                    logger.error(f"Error cleaning up analytics stream: {e}")
+            
+            # Stop the message processor
             self._message_processor.stop()
+            
             self._state.is_running = False
+            
             logger.info("Stream manager stopped successfully")
         except Exception as e:
             self._state.error_state = str(e)

@@ -4,8 +4,13 @@ import time
 from datetime import datetime
 import dateutil.parser
 from typing import Dict, Any, Callable, Optional
+import logging
 
-class ReplayHandler:
+from .types import MessageHandler
+
+logger = logging.getLogger(__name__)
+
+class ReplayHandler(MessageHandler):
     """
     Handles replaying recorded messages from a JSONL file.
     This class is responsible for:
@@ -18,30 +23,36 @@ class ReplayHandler:
         self._replay_thread = None
         self._stop_replay = threading.Event()
         self._lock = threading.Lock()
+        self._recording_file = None
+        self._replay_error = None
 
-    def start_replay(self, recording_file: str) -> None:
+    def start(self) -> None:
         """
-        Start replaying messages from a JSONL recording file with original timing.
-        
-        Args:
-            recording_file: Path to the JSONL recording file
+        Start the handler, replaying messages from a recording file.
         """
         if self._replay_thread and self._replay_thread.is_alive():
             raise RuntimeError("Replay already in progress")
+        
+        if self._recording_file is None:
+            raise ValueError("Recording file must be provided during initialization")
             
         self._stop_replay.clear()
         self._replay_thread = threading.Thread(
             target=self._replay_worker,
-            args=(recording_file,),
+            args=(self._recording_file,),
             daemon=True
         )
         self._replay_thread.start()
 
-    def stop_replay(self) -> None:
+    def stop(self) -> None:
         """Stop the current replay if one is in progress."""
         if self._replay_thread and self._replay_thread.is_alive():
             self._stop_replay.set()
-            self._replay_thread.join()
+            # Add timeout for thread joining
+            self._replay_thread.join(timeout=5)
+            # Check if thread is still alive after timeout
+            if self._replay_thread.is_alive():
+                logger.warning("Replay thread did not terminate within timeout")
             self._replay_thread = None
 
     def _replay_worker(self, recording_file: str) -> None:
@@ -54,6 +65,7 @@ class ReplayHandler:
             with open(recording_file, 'r') as f:
                 messages = [json.loads(line.strip()) for line in f]
                 if not messages:
+                    logger.warning(f"No messages found in recording file: {recording_file}")
                     return
 
                 # Parse timestamps once at the start
@@ -104,7 +116,7 @@ class ReplayHandler:
                               f"Actual: {datetime.fromtimestamp(actual_send_time).isoformat()})")
 
                     except Exception as e:
-                        print(f"Error processing message {i+1}: {e}")
+                        logger.error(f"Error processing message {i+1}: {e}")
 
                 # Print drift statistics
                 if message_count > 0:
@@ -115,8 +127,10 @@ class ReplayHandler:
                     print(f"Maximum drift: {max_drift:.2f}ms")
 
         except FileNotFoundError:
-            print(f"Recording file not found: {recording_file}")
+            logger.error(f"Recording file not found: {recording_file}")
+            self._replay_error = f"Recording file not found: {recording_file}"
         except Exception as e:
-            print(f"Error reading recording file: {e}")
+            logger.error(f"Error reading recording file: {e}")
+            self._replay_error = f"Error reading recording file: {e}"
         finally:
             self._stop_replay.clear() 

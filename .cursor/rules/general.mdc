@@ -5,4 +5,3 @@ alwaysApply: true
 ---
 - ax-devil-device-api-mqtt is a python liberary that provides an easy way to work with Axis and MQTT
 - Always start every use request by reading the [VISION.md](mdc:docs/VISION.md)
-- If you change any overall architecture always start by reading [DESIGN.md](mdc:docs/DESIGN.md) to gather understanding
