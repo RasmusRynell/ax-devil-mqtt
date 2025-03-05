@@ -2,18 +2,17 @@ import asyncio
 import signal
 import sys
 import argparse
+import os
 from pathlib import Path
 from datetime import datetime
 from ax_devil_mqtt.core.manager import MQTTStreamManager
-from ax_devil_mqtt.core.types import SimulatorConfig, MQTTStreamConfig
+from ax_devil_mqtt.core.types import SimulationConfig
 from ax_devil_device_api.features.mqtt_client import BrokerConfig
 
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description='Replay MQTT recordings')
-    parser.add_argument('recording_path', nargs='?', help='Path to the recording file')
-    parser.add_argument('--host', required=True, help='MQTT broker host IP')
-    parser.add_argument('--port', type=int, default=1883, help='MQTT broker port (default: 1883)')
+    parser.add_argument('recording_path', help='Path to the recording file')
     return parser.parse_args()
 
 async def message_callback(message):
@@ -39,46 +38,34 @@ class ReplayExample:
     - Handle graceful shutdown
     """
     
-    def __init__(self, recording_path: str = None, broker_host: str = None, broker_port: int = 1883):
+    def __init__(self, recording_path: str = None):
         self.running = True
         self.manager = None
         self.recording_path = recording_path
-        self.broker_config = BrokerConfig(
-            host=broker_host,
-            port=broker_port,
-            use_tls=False,
-            clean_session=True,
-            auto_reconnect=True
-        )
         
     def setup(self):
-        """Initialize MQTT manager with broker and simulator configuration."""
-        if not self.recording_path:
-            print("Error: No recording file specified!")
-            print("\nUsage:")
-            print("python src/ax_devil_mqtt/examples/replay.py --host <broker_ip> <recording_file>")
-            print("\nTo create a recording first, run:")
-            print("python src/ax_devil_mqtt/examples/analytics_monitor.py --host <broker_ip>")
-            sys.exit(1)
-            
-        if not Path(self.recording_path).exists():
+        """Set up the replay manager with the recording file."""
+        if not os.path.exists(self.recording_path):
             print(f"Error: Recording file {self.recording_path} not found!")
             print("\nTo create a recording first, run:")
             print("python src/ax_devil_mqtt/examples/analytics_monitor.py --host <broker_ip>")
             sys.exit(1)
             
-        print(f"Setting up with MQTT broker: {self.broker_config.host}:{self.broker_config.port}")
         print(f"Using recording file: {self.recording_path}")
         
-        simulator_config = SimulatorConfig(recording_file=self.recording_path)
-        
-        config = MQTTStreamConfig(
-            broker_config=self.broker_config,
-            simulator_config=simulator_config,
+        config = SimulationConfig(
+            recording_file=self.recording_path,
             message_callback=message_callback
         )
         
         self.manager = MQTTStreamManager(config)
+        
+        def on_replay_complete():
+            print("\nReplay completed. Exiting...")
+            self.running = False
+            
+        if hasattr(self.manager._handler, 'set_completion_callback'):
+            self.manager._handler.set_completion_callback(on_replay_complete)
 
     async def replay_recording(self):
         """Replay messages from a recorded session."""
@@ -87,7 +74,7 @@ class ReplayExample:
             self.manager.start()
             print("Replay started. Messages will be logged via the callback.")
             
-            # Keep running until interrupted
+            # Keep running until replay completes or is interrupted
             while self.running:
                 await asyncio.sleep(1)
                 
@@ -108,7 +95,6 @@ class ReplayExample:
     def run(self):
         """Run the replay example."""
         print("Starting MQTT Replay Example")
-        print(f"MQTT Broker: {self.broker_config.host}:{self.broker_config.port}")
         print("-" * 50)
         
         self.setup()
@@ -128,9 +114,7 @@ if __name__ == "__main__":
     args = parse_args()
     
     example = ReplayExample(
-        recording_path=args.recording_path,
-        broker_host=args.host,
-        broker_port=args.port
+        recording_path=args.recording_path
     )
     signal.signal(signal.SIGINT, example.signal_handler)
     example.run()

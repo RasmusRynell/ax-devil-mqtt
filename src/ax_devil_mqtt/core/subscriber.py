@@ -31,11 +31,9 @@ class MQTTSubscriber(MessageHandler):
         self._broker_port = broker_port
         self._topics = topics
         self._connected = False
-        self._stop_event = threading.Event()
         self._message_callback = message_callback
         self._connection_error = None
         
-        # Set up MQTT client
         self._client = mqtt.Client()
         self._client.on_connect = self._on_connect
         self._client.on_message = self._on_message
@@ -45,9 +43,7 @@ class MQTTSubscriber(MessageHandler):
         """Internal callback when connection is established"""
         if rc == 0:
             self._connected = True
-            # Subscribe to all configured topics
             for topic in self._topics:
-                print(f"Subscribing to topic: {topic}")
                 self._client.subscribe(topic)
         else:
             self._connected = False
@@ -57,7 +53,6 @@ class MQTTSubscriber(MessageHandler):
     def _on_message(self, client, userdata, message):
         """Internal callback for handling incoming messages"""
         try:
-            # Parse message into a structured format with timestamp
             msg = {
                 'timestamp': datetime.now().isoformat(),
                 'topic': message.topic,
@@ -66,23 +61,21 @@ class MQTTSubscriber(MessageHandler):
                 'retain': message.retain
             }
             
-            # Try to parse JSON payload if possible
             try:
                 msg['payload'] = json.loads(msg['payload'])
             except json.JSONDecodeError:
-                pass  # Keep payload as string if not JSON
+                pass
             
-            # Forward to callback if set
             if self._message_callback:
                 self._message_callback(msg)
         except Exception as e:
-            print(f"Error processing message: {e}")
+            logger.error(f"Error processing message: {e}")
 
     def _on_disconnect(self, client, userdata, rc):
         """Internal callback when disconnected"""
         self._connected = False
         if rc != 0:
-            print(f"Unexpected disconnection (code {rc})")
+            logger.error(f"Unexpected disconnection (code {rc})")
 
     def start(self):
         """
@@ -91,7 +84,7 @@ class MQTTSubscriber(MessageHandler):
         self._connection_error = None
         
         if not self._connected:
-            print(f"Connecting to MQTT broker at {self._broker_host}:{self._broker_port}")
+            logger.info(f"Connecting to MQTT broker at {self._broker_host}:{self._broker_port}")
             try:
                 self._client.connect(self._broker_host, self._broker_port)
             except Exception as e:
@@ -115,7 +108,6 @@ class MQTTSubscriber(MessageHandler):
 
     def stop(self):
         """Stop the subscriber and clean up"""
-        self._stop_event.set()
         self._client.loop_stop()
         self._client.disconnect()
         self._connected = False

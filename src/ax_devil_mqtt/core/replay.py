@@ -25,6 +25,11 @@ class ReplayHandler(MessageHandler):
         self._lock = threading.Lock()
         self._recording_file = None
         self._replay_error = None
+        self._completion_callback = None
+
+    def set_completion_callback(self, callback: Callable[[], None]) -> None:
+        """Set a callback to be called when replay is complete."""
+        self._completion_callback = callback
 
     def start(self) -> None:
         """
@@ -48,9 +53,7 @@ class ReplayHandler(MessageHandler):
         """Stop the current replay if one is in progress."""
         if self._replay_thread and self._replay_thread.is_alive():
             self._stop_replay.set()
-            # Add timeout for thread joining
             self._replay_thread.join(timeout=5)
-            # Check if thread is still alive after timeout
             if self._replay_thread.is_alive():
                 logger.warning("Replay thread did not terminate within timeout")
             self._replay_thread = None
@@ -68,13 +71,11 @@ class ReplayHandler(MessageHandler):
                     logger.warning(f"No messages found in recording file: {recording_file}")
                     return
 
-                # Parse timestamps once at the start
                 message_times = [
                     dateutil.parser.parse(msg['timestamp']).timestamp() 
                     for msg in messages
                 ]
                 
-                # Get start time and first message time
                 replay_start_time = time.time()
                 first_msg_time = message_times[0]
 
@@ -83,25 +84,21 @@ class ReplayHandler(MessageHandler):
                         break
 
                     try:
-                        # Calculate when this message should be sent
                         relative_msg_time = msg_timestamp - first_msg_time
                         target_send_time = replay_start_time + relative_msg_time
 
-                        # Wait until it's time to send this message
                         current_time = time.time()
                         if current_time < target_send_time:
                             time.sleep(target_send_time - current_time)
 
-                        # Extract and validate message fields
                         topic = message.get('topic')
                         payload = message.get('payload')
                         qos = message.get('qos', 1)
 
                         if not topic or payload is None:
-                            print(f"Skipping message missing required fields: {message}")
+                            logger.warning(f"Skipping message missing required fields: {message}")
                             continue
 
-                        # Call the message callback directly
                         self._message_callback(message)
                         
                         # Calculate drift for monitoring
@@ -111,7 +108,7 @@ class ReplayHandler(MessageHandler):
                         max_drift = max(max_drift, abs(drift_ms))
                         message_count += 1
                         
-                        print(f"Message {i+1}/{len(messages)} - Drift: {drift_ms:.2f}ms " + 
+                        logger.info(f"Message {i+1}/{len(messages)} - Drift: {drift_ms:.2f}ms " + 
                               f"(Target: {datetime.fromtimestamp(target_send_time).isoformat()}, " +
                               f"Actual: {datetime.fromtimestamp(actual_send_time).isoformat()})")
 
@@ -121,10 +118,10 @@ class ReplayHandler(MessageHandler):
                 # Print drift statistics
                 if message_count > 0:
                     avg_drift = total_drift / message_count
-                    print(f"\nReplay Statistics:")
-                    print(f"Total messages: {message_count}")
-                    print(f"Average drift: {avg_drift:.2f}ms")
-                    print(f"Maximum drift: {max_drift:.2f}ms")
+                    logger.info(f"\nReplay Statistics:")
+                    logger.info(f"Total messages: {message_count}")
+                    logger.info(f"Average drift: {avg_drift:.2f}ms")
+                    logger.info(f"Maximum drift: {max_drift:.2f}ms")
 
         except FileNotFoundError:
             logger.error(f"Recording file not found: {recording_file}")
@@ -133,4 +130,6 @@ class ReplayHandler(MessageHandler):
             logger.error(f"Error reading recording file: {e}")
             self._replay_error = f"Error reading recording file: {e}"
         finally:
-            self._stop_replay.clear() 
+            self._stop_replay.clear()
+            if self._completion_callback:
+                self._completion_callback() 

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 import click
 import asyncio
+import os
 from pathlib import Path
 from ax_devil_mqtt.core.manager import MQTTStreamManager
-from ax_devil_mqtt.core.types import SimulatorConfig, MQTTStreamConfig
+from ax_devil_mqtt.core.types import SimulationConfig, AnalyticsMQTTConfig
 from ax_devil_device_api import DeviceConfig
 from ax_devil_device_api.features.mqtt_client import BrokerConfig
 
@@ -35,7 +36,8 @@ def device():
 @click.option("--streams", "-s", multiple=True, help="Analytics streams to monitor")
 @click.option("--record", "-r", is_flag=True, help="Record messages to file")
 @click.option("--duration", "-d", default=0, help="Monitoring duration in seconds (0 for infinite)")
-def monitor(device_ip, username, password, broker, port, streams, record, duration):
+@click.option("--record-file", "-f", default="recordings/device_recording.jsonl", help="File to record messages to")
+def monitor(device_ip, username, password, broker, port, streams, record, duration, record_file):
     """Monitor specific analytics streams"""
     assert broker != "localhost", "Cannot use localhost as broker host since camera has to be configured. Find your ip and use that."
 
@@ -53,7 +55,7 @@ def monitor(device_ip, username, password, broker, port, streams, record, durati
         auto_reconnect=True
     )
     
-    config = MQTTStreamConfig(
+    config = AnalyticsMQTTConfig(
         broker_config=broker_config,
         device_config=device_config,
         analytics_mqtt_data_source_key=streams[0] if streams else None,
@@ -63,10 +65,11 @@ def monitor(device_ip, username, password, broker, port, streams, record, durati
     manager = MQTTStreamManager(config)
     
     try:
-        manager.start()
         if record:
             Path("recordings").mkdir(exist_ok=True)
-            manager.start_recording("recordings/device_recording.jsonl")
+            manager.start(record_file)
+        else:
+            manager.start()
         
         if duration > 0:
             asyncio.get_event_loop().run_until_complete(asyncio.sleep(duration))
@@ -76,8 +79,6 @@ def monitor(device_ip, username, password, broker, port, streams, record, durati
     except KeyboardInterrupt:
         print("\nStopping monitoring...")
     finally:
-        if record:
-            manager.stop_recording()
         manager.stop()
 
 @cli.group()
@@ -87,36 +88,29 @@ def simulation():
 
 @simulation.command("replay")
 @click.argument("recording_file")
-@click.option("--broker", "-b", required=True, help="MQTT broker address")
-@click.option("--port", "-p", default=1883, help="MQTT broker port")
-def replay(recording_file, broker, port):
+def replay(recording_file):
     """Replay a recorded analytics session"""
-    assert broker != "localhost", "Cannot use localhost as broker host since camera has to be configured. Find your ip and use that."
-
-    broker_config = BrokerConfig(
-        host=broker,
-        port=port,
-        use_tls=False,
-        clean_session=True,
-        auto_reconnect=True
-    )
     
-    simulator_config = SimulatorConfig(
-        recording_file=recording_file
-    )
+    loop = asyncio.get_event_loop()
     
-    config = MQTTStreamConfig(
-        broker_config=broker_config,
-        simulator_config=simulator_config,
+    def on_replay_complete():
+        print("\nReplay completed. Exiting...")
+        loop.call_soon_threadsafe(loop.stop)
+    
+    config = SimulationConfig(
+        recording_file=recording_file,
         message_callback=default_message_callback
     )
     
     manager = MQTTStreamManager(config)
     
+    if hasattr(manager._handler, 'set_completion_callback'):
+        manager._handler.set_completion_callback(on_replay_complete)
+    
     try:
         manager.start()
         # Run until the replay is complete or interrupted
-        asyncio.get_event_loop().run_forever()
+        loop.run_forever()
     except KeyboardInterrupt:
         print("\nStopping replay...")
     finally:

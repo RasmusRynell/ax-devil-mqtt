@@ -34,17 +34,14 @@ class MessageRecorder:
         Args:
             message: The message to record and forward
         """
-        # Record message if enabled
         if self._recording_enabled and self._recording_file:
             try:
-                # Write message to file immediately
                 json.dump(message, self._recording_file)
                 self._recording_file.write('\n')
                 self._recording_file.flush()
             except Exception as e:
                 logger.error(f"Error recording message: {e}")
         
-        # Forward to next callback if set
         if self._next_callback:
             self._next_callback(message)
     
@@ -59,10 +56,8 @@ class MessageRecorder:
             self.stop_recording()
         
         try:
-            # Create directory if it doesn't exist
             os.makedirs(os.path.dirname(os.path.abspath(filepath)), exist_ok=True)
             
-            # Open file in append mode
             self._recording_file = open(filepath, 'a')
             self._recording_enabled = True
             logger.info(f"Started recording messages to {filepath}")

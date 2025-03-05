@@ -4,7 +4,7 @@ import sys
 import argparse
 import os
 from ax_devil_mqtt.core.manager import MQTTStreamManager
-from ax_devil_mqtt.core.types import MQTTStreamConfig
+from ax_devil_mqtt.core.types import AnalyticsMQTTConfig
 import json
 import time
 from datetime import datetime
@@ -71,7 +71,7 @@ class DeviceExample:
         analytics_key = "com.axis.analytics_scene_description.v0.beta#1"
         print(f"Using analytics data source: {analytics_key}")
     
-        config = MQTTStreamConfig(
+        config = AnalyticsMQTTConfig(
             device_config=CAMERA_CONFIG,
             broker_config=self.broker_config,
             analytics_mqtt_data_source_key=analytics_key,
@@ -109,7 +109,9 @@ class DeviceExample:
         
         print("\nRecording completed!")
         print(f"To replay this recording, run:")
-        print(f"python src/ax_devil_mqtt/examples/replay.py --host {self.broker_config.host} {filepath}")
+        print(f"python src/ax_devil_mqtt/examples/replay.py {filepath}")
+        
+        self.running = False
         
         return filepath
 

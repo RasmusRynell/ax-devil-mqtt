@@ -7,14 +7,16 @@ __version__ = "0.1.0"
 from .core.manager import MQTTStreamManager
 from .core.subscriber import MQTTSubscriber
 from .core.replay import ReplayHandler
-from .core.analytics_mqtt_stream_tmp import TemporaryAnalyticsMQTTDataStream
-from .core.types import SimulatorConfig, MQTTStreamConfig
+from .core.device_analytics_mqtt_manager import DeviceAnalyticsMQTTManager
+from .core.types import MQTTConfigBase, RawMQTTConfig, AnalyticsMQTTConfig, SimulationConfig
 
 __all__ = [
     "MQTTStreamManager",
     "MQTTSubscriber",
     "ReplayHandler",
-    "TemporaryAnalyticsMQTTDataStream",
-    "SimulatorConfig",
-    "MQTTStreamConfig"
+    "DeviceAnalyticsMQTTManager",
+    "MQTTConfigBase",
+    "RawMQTTConfig",
+    "AnalyticsMQTTConfig",
+    "SimulationConfig"
 ] 

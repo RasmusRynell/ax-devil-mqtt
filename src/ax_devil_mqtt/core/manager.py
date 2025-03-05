@@ -12,8 +12,8 @@ from ax_devil_device_api.features.mqtt_client import BrokerConfig
 from .subscriber import MQTTSubscriber
 from .replay import ReplayHandler
 from .recorder import MessageRecorder
-from .analytics_mqtt_stream_tmp import TemporaryAnalyticsMQTTDataStream
-from .types import SimulatorConfig, MQTTStreamConfig, MQTTStreamState, MessageHandler
+from .device_analytics_mqtt_manager import DeviceAnalyticsMQTTManager
+from .types import MQTTConfigBase, RawMQTTConfig, AnalyticsMQTTConfig, SimulationConfig, MQTTStreamState, MessageHandler
 
 logger = logging.getLogger(__name__)
 
@@ -72,42 +72,43 @@ class MQTTStreamManager:
     Core manager class for handling MQTT message streams.
     Supports both real-time data streams and simulated replay.
     """
-    def __init__(self, config: MQTTStreamConfig):
+    def __init__(self, config: MQTTConfigBase):
         """Initialize the MQTT stream manager."""
         self._config = config
         self._config.validate()
         
         self._state = MQTTStreamState()
         
-        # Set up the message processing chain
         self._message_processor = MessageProcessor(
             config.message_callback, 
             config.worker_threads
         )
         
-        # Create recorder as an intermediary component
         self._recorder = MessageRecorder(self._message_processor.submit_message)
         
-        # Store analytics stream if created
         self._analytics_stream = None
         
-        # Initialize the appropriate handler based on config
         self._handler: MessageHandler = self._create_handler()
         
     def _create_handler(self) -> MessageHandler:
         """Create the appropriate handler based on configuration."""
-        if self._config.device_config:
-            # Device mode - use subscriber with analytics or raw topics
-            if self._config.analytics_mqtt_data_source_key:
-                self._analytics_stream = TemporaryAnalyticsMQTTDataStream(
-                    device_config=self._config.device_config,
-                    broker_config=self._config.broker_config,
-                    analytics_data_source_key=self._config.analytics_mqtt_data_source_key
-                )
-                topics = self._analytics_stream.topics
-            else:
-                topics = self._config.raw_mqtt_topics
-                
+        if isinstance(self._config, RawMQTTConfig):
+            return MQTTSubscriber(
+                broker_host=self._config.broker_config.host,
+                broker_port=self._config.broker_config.port,
+                topics=self._config.raw_mqtt_topics,
+                max_queue_size=self._config.max_queue_size,
+                message_callback=self._recorder.record_message
+            )
+            
+        elif isinstance(self._config, AnalyticsMQTTConfig):
+            self._analytics_stream = DeviceAnalyticsMQTTManager(
+                device_config=self._config.device_config,
+                broker_config=self._config.broker_config,
+                analytics_data_source_key=self._config.analytics_mqtt_data_source_key
+            )
+            topics = self._analytics_stream.topics
+            
             return MQTTSubscriber(
                 broker_host=self._config.broker_config.host,
                 broker_port=self._config.broker_config.port,
@@ -116,14 +117,13 @@ class MQTTStreamManager:
                 message_callback=self._recorder.record_message
             )
             
-        else:
-            # Simulator mode - use ReplayHandler
-            if not self._config.simulator_config or not self._config.simulator_config.recording_file:
-                raise ValueError("Simulator mode requires a recording file")
+        elif isinstance(self._config, SimulationConfig):
             handler = ReplayHandler(self._recorder.record_message)
-            # Store the recording file so it can be accessed later
-            handler._recording_file = self._config.simulator_config.recording_file
+            handler._recording_file = self._config.recording_file
             return handler
+        
+        else:
+            raise ValueError(f"Unsupported configuration type: {type(self._config)}")
 
     def start(self, recording_file: Optional[str] = None):
         """
@@ -137,12 +137,10 @@ class MQTTStreamManager:
             return
 
         try:
-            # Start recording if a file path is provided
             if recording_file:
                 self._recorder.start_recording(recording_file)
                 self._state.is_recording = True
             
-            # Start the message handler
             self._handler.start()
             self._state.is_running = True
             
@@ -159,15 +157,12 @@ class MQTTStreamManager:
             return
 
         try:
-            # Stop the handler
             self._handler.stop()
             
-            # Stop recording if active
             if self._state.is_recording:
                 self._recorder.stop_recording()
                 self._state.is_recording = False
             
-            # Clean up analytics stream if it exists
             if self._analytics_stream:
                 try:
                     self._analytics_stream.cleanup()
@@ -175,7 +170,6 @@ class MQTTStreamManager:
                 except Exception as e:
                     logger.error(f"Error cleaning up analytics stream: {e}")
             
-            # Stop the message processor
             self._message_processor.stop()
             
             self._state.is_running = False
