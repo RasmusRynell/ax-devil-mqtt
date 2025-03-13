@@ -53,10 +53,10 @@ A Python package for working with Axis devices MQTT functionality, supporting an
       <td align="center"><a href="#data-recording">ax-devil-mqtt device monitor --record</a></td>
     </tr>
     <tr>
-      <td><b>⏯️ Simulation/Replay</b></td>
+      <td><b>⏯️ Replay</b></td>
       <td>Replay recorded MQTT data for testing and development</td>
-      <td align="center"><code>SimulationManager</code></td>
-      <td align="center"><a href="#data-replay">ax-devil-mqtt simulation replay</a></td>
+      <td align="center"><code>ReplayManager</code></td>
+      <td align="center"><a href="#data-replay">ax-devil-mqtt replay</a></td>
     </tr>
   </tbody>
 </table>
@@ -122,18 +122,18 @@ manager.stop()
 </details>
 
 <details>
-<summary><b>⏯️ Simulation/Replay</b></summary>
+<summary><b>⏯️ Replay</b></summary>
 <p>
 
 ```python
 import time
-from ax_devil_mqtt import SimulationManager
+from ax_devil_mqtt import ReplayManager
 
 def message_callback(message):
     print(message)
 
-# Create simulation manager
-manager = SimulationManager(
+# Create a replay manager
+manager = ReplayManager(
     recording_file="recordings/device_recording.jsonl",
     message_callback=message_callback
 )
@@ -201,7 +201,7 @@ ax-devil-mqtt device monitor \
 
 ```bash
 # Replay previously recorded MQTT data
-ax-devil-mqtt simulation replay recordings/device_recording.jsonl
+ax-devil-mqtt replay recordings/device_recording.jsonl
 ```
 </p>
 </details>

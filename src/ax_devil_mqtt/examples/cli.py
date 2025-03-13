@@ -3,7 +3,7 @@ import click
 import asyncio
 import os
 from pathlib import Path
-from ax_devil_mqtt.core.manager import SimulationManager, AnalyticsManager
+from ax_devil_mqtt.core.manager import ReplayManager, AnalyticsManager
 from ax_devil_device_api import DeviceConfig
 
 async def default_message_callback(message):
@@ -71,11 +71,11 @@ def monitor(device_ip, username, password, broker, port, stream, record, duratio
         manager.stop()
 
 @cli.group()
-def simulation():
-    """Commands for simulation and replay"""
+def replay():
+    """Commands for replay and replay"""
     pass
 
-@simulation.command("replay")
+@replay.command("replay")
 @click.argument("recording_file")
 def replay(recording_file):
     """Replay a recorded analytics session"""
@@ -86,7 +86,7 @@ def replay(recording_file):
         print("\nReplay completed. Exiting...")
         loop.call_soon_threadsafe(loop.stop)
     
-    manager = SimulationManager(
+    manager = ReplayManager(
         recording_file=recording_file,
         message_callback=default_message_callback
     )

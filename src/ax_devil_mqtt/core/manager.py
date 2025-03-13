@@ -194,8 +194,8 @@ class AnalyticsManager(StreamManagerBase):
             logger.error(f"Error during analytics manager shutdown: {e}")
             raise
 
-class SimulationManager(StreamManagerBase):
-    """Manager for simulating MQTT message streams from recorded files."""
+class ReplayManager(StreamManagerBase):
+    """Manager for replaying MQTT message streams from recorded files."""
     def __init__(
         self,
         recording_file: str,

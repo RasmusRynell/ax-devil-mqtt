@@ -2,7 +2,7 @@ import argparse
 import signal
 import sys
 import threading
-from ax_devil_mqtt.core.manager import SimulationManager
+from ax_devil_mqtt.core.manager import ReplayManager
 
 def main():
     """Run the MQTT replay example."""
@@ -20,8 +20,8 @@ def main():
     def message_callback(message):
         print(message)
 
-    # Create the simulation manager
-    manager = SimulationManager(
+    # Create the replay manager
+    manager = ReplayManager(
         recording_file=args.recording_path,
         message_callback=message_callback,
         on_replay_complete=on_replay_complete
