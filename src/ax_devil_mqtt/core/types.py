@@ -1,13 +1,8 @@
-"""
-Shared types and configurations for the AX Devil MQTT package.
-"""
-
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any, Callable, Union, Coroutine, Protocol, runtime_checkable
+
+from typing import Optional, List, Dict, Any, Callable
 from abc import ABC, abstractmethod
 from ax_devil_device_api import DeviceConfig
-from ax_devil_device_api.features.mqtt_client import BrokerConfig
-
 
 class MessageHandler(ABC):
     """
@@ -16,14 +11,10 @@ class MessageHandler(ABC):
     """
     @abstractmethod
     def start(self) -> None:
-        """
-        Start the message handler.
-        """
         pass
         
     @abstractmethod
     def stop(self) -> None:
-        """Stop the message handler and clean up resources."""
         pass
 
 class MQTTConfigBase(ABC):
@@ -33,22 +24,33 @@ class MQTTConfigBase(ABC):
         """Validate the configuration."""
         pass
 
+
+class BrokerConfig():
+    """Configuration for the MQTT broker."""
+    def __init__(self, host: str, port: int, username: str = "", password: str = "", client_id: str = ""):
+        self.host = host
+        self.port = port
+        self.username = username
+        self.password = password
+        self.client_id = client_id
+
+    def __repr__(self):
+        return f"BrokerConfig(host={self.host}, port={self.port}, username={self.username}, password={self.password}, client_id={self.client_id})"
+
 class RawMQTTConfig(MQTTConfigBase):
     """Configuration for raw MQTT topics subscription."""
     def __init__(
         self,
-        broker_config: BrokerConfig,
         device_config: DeviceConfig,
+        broker_config: BrokerConfig,
         raw_mqtt_topics: List[str],
-        message_callback: Optional[Callable[[Dict[str, Any]], Union[None, Coroutine[Any, Any, None]]]] = None,
-        max_queue_size: int = 1000,
+        message_callback: Callable[[Dict[str, Any]], None],
         worker_threads: int = 4
     ):
         self.broker_config = broker_config
         self.device_config = device_config
         self.raw_mqtt_topics = raw_mqtt_topics
         self.message_callback = message_callback
-        self.max_queue_size = max_queue_size
         self.worker_threads = worker_threads
     
     def validate(self) -> None:
@@ -63,15 +65,13 @@ class AnalyticsMQTTConfig(MQTTConfigBase):
         broker_config: BrokerConfig,
         device_config: DeviceConfig,
         analytics_mqtt_data_source_key: str,
-        message_callback: Optional[Callable[[Dict[str, Any]], Union[None, Coroutine[Any, Any, None]]]] = None,
-        max_queue_size: int = 1000,
+        message_callback: Callable[[Dict[str, Any]], None],
         worker_threads: int = 4
     ):
         self.broker_config = broker_config
         self.device_config = device_config
         self.analytics_mqtt_data_source_key = analytics_mqtt_data_source_key
         self.message_callback = message_callback
-        self.max_queue_size = max_queue_size
         self.worker_threads = worker_threads
     
     def validate(self) -> None:
@@ -84,13 +84,12 @@ class SimulationConfig(MQTTConfigBase):
     def __init__(
         self,
         recording_file: str,
-        message_callback: Optional[Callable[[Dict[str, Any]], Union[None, Coroutine[Any, Any, None]]]] = None,
+        message_callback: Callable[[Dict[str, Any]], None],
         worker_threads: int = 4
     ):
         self.recording_file = recording_file
         self.message_callback = message_callback
         self.worker_threads = worker_threads
-        self.max_queue_size = 1000
     
     def validate(self) -> None:
         """Validate the simulation configuration."""

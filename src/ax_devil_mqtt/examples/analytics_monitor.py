@@ -9,7 +9,7 @@ import json
 import time
 from datetime import datetime
 from ax_devil_device_api import DeviceConfig
-from ax_devil_device_api.features.mqtt_client import BrokerConfig
+from ax_devil_mqtt.core.types import BrokerConfig
 
 def parse_args():
     """Parse command line arguments."""
@@ -56,10 +56,7 @@ class DeviceExample:
         self.duration = duration
         self.broker_config = BrokerConfig(
             host=broker_host,
-            port=broker_port,
-            use_tls=False,
-            clean_session=True,
-            auto_reconnect=True
+            port=broker_port
         )
 
     def setup(self):

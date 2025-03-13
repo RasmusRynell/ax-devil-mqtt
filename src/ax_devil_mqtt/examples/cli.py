@@ -4,9 +4,9 @@ import asyncio
 import os
 from pathlib import Path
 from ax_devil_mqtt.core.manager import MQTTStreamManager
-from ax_devil_mqtt.core.types import SimulationConfig, AnalyticsMQTTConfig
+from ax_devil_mqtt.core.types import SimulationConfig, AnalyticsMQTTConfig, BrokerConfig
 from ax_devil_device_api import DeviceConfig
-from ax_devil_device_api.features.mqtt_client import BrokerConfig
+from ax_devil_mqtt.core.types import BrokerConfig
 
 async def default_message_callback(message):
     """Default callback to print received messages."""
@@ -49,10 +49,7 @@ def monitor(device_ip, username, password, broker, port, streams, record, durati
     
     broker_config = BrokerConfig(
         host=broker,
-        port=port,
-        use_tls=False,
-        clean_session=True,
-        auto_reconnect=True
+        port=port
     )
     
     config = AnalyticsMQTTConfig(

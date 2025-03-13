@@ -1,5 +1,5 @@
 import paho.mqtt.client as mqtt
-from typing import Callable, Dict, Any, Optional, List
+from typing import Callable, Dict, Any, List
 import threading
 import queue
 import json
@@ -24,8 +24,8 @@ class MQTTSubscriber(MessageHandler):
         broker_host: str,
         broker_port: int,
         topics: List[str],
-        max_queue_size: int = 1000,
-        message_callback: Optional[Callable[[Dict[str, Any]], None]] = None
+        message_callback: Callable[[Dict[str, Any]], None],
+        connection_timeout_seconds: int = 5
     ):
         self._broker_host = broker_host
         self._broker_port = broker_port
@@ -33,7 +33,7 @@ class MQTTSubscriber(MessageHandler):
         self._connected = False
         self._message_callback = message_callback
         self._connection_error = None
-        
+        self._connection_timeout_seconds = connection_timeout_seconds
         self._client = mqtt.Client()
         self._client.on_connect = self._on_connect
         self._client.on_message = self._on_message
@@ -93,10 +93,9 @@ class MQTTSubscriber(MessageHandler):
 
         self._client.loop_start()
         
-        timeout = 5  # seconds
         start_time = time.time()
         
-        while not self._connected and time.time() - start_time < timeout:
+        while not self._connected and time.time() - start_time < self._connection_timeout_seconds:
             if self._connection_error:
                 self._client.loop_stop()
                 raise ConnectionError(self._connection_error)

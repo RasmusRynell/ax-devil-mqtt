@@ -1,22 +1,20 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "ax-devil-mqtt"
 version = "0.1.0"
 description = "A Python package for settings up and retrieving data from Axis devices using MQTT"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "Rasmus Rynell", email = "rynell.rasmus@gmail.com" }]
+authors = [{ name = "Rasmus Rynell", email = "Rynell.Rasmus@gmail.com" }]
 keywords = ["axis", "mqtt", "camera", "analytics", "iot"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -24,22 +22,10 @@ classifiers = [
 ]
 
 dependencies = [
-    "ax-devil-device-api",
+    "ax-devil-device-api>=0.3.0",
     "paho-mqtt>=1.6.1",
     "python-dateutil>=2.8.2",
     "click>=8.0.0"
-]
-
-[project.scripts]
-ax-devil-mqtt = "ax_devil_mqtt.examples.cli:cli"
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0.0",
-    "pytest-asyncio>=0.18.0",
-    "black>=22.0.0",
-    "isort>=5.0.0",
-    "mypy>=0.900"
 ]
 
 [project.urls]
@@ -48,22 +34,5 @@ Repository = "https://github.com/rasmusrynell/ax-devil-mqtt.git"
 Documentation = "https://github.com/rasmusrynell/ax-devil-mqtt#readme"
 "Bug Tracker" = "https://github.com/rasmusrynell/ax-devil-mqtt/issues"
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/ax_devil_mqtt"]
-
-[tool.black]
-line-length = 100
-target-version = ["py38"]
-include = '\.pyi?$'
-
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-line-length = 100
-
-[tool.mypy]
-python_version = "3.8"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true 
+[project.scripts]
+ax-devil-mqtt = "ax_devil_mqtt.examples.cli:cli"

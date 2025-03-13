@@ -7,7 +7,6 @@ from pathlib import Path
 from datetime import datetime
 from ax_devil_mqtt.core.manager import MQTTStreamManager
 from ax_devil_mqtt.core.types import SimulationConfig
-from ax_devil_device_api.features.mqtt_client import BrokerConfig
 
 def parse_args():
     """Parse command line arguments."""

@@ -3,16 +3,11 @@ import threading
 from typing import Any, Dict, Optional
 from concurrent.futures import ThreadPoolExecutor
 import logging
-from dataclasses import dataclass
-import time
-
-from ax_devil_device_api import DeviceConfig
-from ax_devil_device_api.features.mqtt_client import BrokerConfig
 
 from .subscriber import MQTTSubscriber
 from .replay import ReplayHandler
 from .recorder import MessageRecorder
-from .device_analytics_mqtt_manager import DeviceAnalyticsMQTTManager
+from .temporary_analytics_mqtt_publisher import TemporaryAnalyticsMQTTPublisher
 from .types import MQTTConfigBase, RawMQTTConfig, AnalyticsMQTTConfig, SimulationConfig, MQTTStreamState, MessageHandler
 
 logger = logging.getLogger(__name__)
@@ -96,24 +91,22 @@ class MQTTStreamManager:
             return MQTTSubscriber(
                 broker_host=self._config.broker_config.host,
                 broker_port=self._config.broker_config.port,
-                topics=self._config.raw_mqtt_topics,
-                max_queue_size=self._config.max_queue_size,
+                topics=["ax-devil/temp/raw"],
                 message_callback=self._recorder.record_message
             )
             
         elif isinstance(self._config, AnalyticsMQTTConfig):
-            self._analytics_stream = DeviceAnalyticsMQTTManager(
+            self._analytics_stream = TemporaryAnalyticsMQTTPublisher(
                 device_config=self._config.device_config,
                 broker_config=self._config.broker_config,
+                topic="ax-devil/temp/analytics",
                 analytics_data_source_key=self._config.analytics_mqtt_data_source_key
             )
-            topics = self._analytics_stream.topics
             
             return MQTTSubscriber(
                 broker_host=self._config.broker_config.host,
                 broker_port=self._config.broker_config.port,
-                topics=topics,
-                max_queue_size=self._config.max_queue_size,
+                topics=["ax-devil/temp/analytics"],
                 message_callback=self._recorder.record_message
             )
             

@@ -4,4 +4,4 @@ globs:
 alwaysApply: true
 ---
 - ax-devil-device-api-mqtt is a python liberary that provides an easy way to work with Axis and MQTT
-- Always start every use request by reading the [VISION.md](mdc:docs/VISION.md)
+- Always start every use request by reading the [VISION.md](mdc:.cursor/rules/docs/VISION.md)
