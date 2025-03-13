@@ -3,10 +3,8 @@ import click
 import asyncio
 import os
 from pathlib import Path
-from ax_devil_mqtt.core.manager import MQTTStreamManager
-from ax_devil_mqtt.core.types import SimulationConfig, AnalyticsMQTTConfig, BrokerConfig
+from ax_devil_mqtt.core.manager import SimulationManager, AnalyticsManager
 from ax_devil_device_api import DeviceConfig
-from ax_devil_mqtt.core.types import BrokerConfig
 
 async def default_message_callback(message):
     """Default callback to print received messages."""
@@ -33,12 +31,12 @@ def device():
                      required=False, help='Password for authentication')
 @click.option("--broker", "-b", required=True, help="MQTT broker address")
 @click.option("--port", "-p", default=1883, help="MQTT broker port")
-@click.option("--streams", "-s", multiple=True, help="Analytics streams to monitor")
+@click.option("--stream", "-s", required=True, help="Analytics stream to monitor")
 @click.option("--record", "-r", is_flag=True, help="Record messages to file")
 @click.option("--duration", "-d", default=0, help="Monitoring duration in seconds (0 for infinite)")
 @click.option("--record-file", "-f", default="recordings/device_recording.jsonl", help="File to record messages to")
-def monitor(device_ip, username, password, broker, port, streams, record, duration, record_file):
-    """Monitor specific analytics streams"""
+def monitor(device_ip, username, password, broker, port, stream, record, duration, record_file):
+    """Monitor a specific analytics stream"""
     assert broker != "localhost", "Cannot use localhost as broker host since camera has to be configured. Find your ip and use that."
 
     device_config = DeviceConfig.http(
@@ -47,19 +45,13 @@ def monitor(device_ip, username, password, broker, port, streams, record, durati
         password=password
     )
     
-    broker_config = BrokerConfig(
-        host=broker,
-        port=port
-    )
-    
-    config = AnalyticsMQTTConfig(
-        broker_config=broker_config,
+    manager = AnalyticsManager(
+        broker_host=broker,
+        broker_port=port,
         device_config=device_config,
-        analytics_mqtt_data_source_key=streams[0] if streams else None,
+        analytics_data_source_key=stream,
         message_callback=default_message_callback
     )
-    
-    manager = MQTTStreamManager(config)
     
     try:
         if record:
@@ -94,12 +86,10 @@ def replay(recording_file):
         print("\nReplay completed. Exiting...")
         loop.call_soon_threadsafe(loop.stop)
     
-    config = SimulationConfig(
+    manager = SimulationManager(
         recording_file=recording_file,
         message_callback=default_message_callback
     )
-    
-    manager = MQTTStreamManager(config)
     
     if hasattr(manager._handler, 'set_completion_callback'):
         manager._handler.set_completion_callback(on_replay_complete)

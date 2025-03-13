@@ -1,156 +1,87 @@
-import asyncio
+import argparse
 import signal
 import sys
-import argparse
 import os
-from ax_devil_mqtt.core.manager import MQTTStreamManager
-from ax_devil_mqtt.core.types import AnalyticsMQTTConfig
-import json
 import time
 from datetime import datetime
+from ax_devil_mqtt.core.manager import AnalyticsManager
 from ax_devil_device_api import DeviceConfig
-from ax_devil_mqtt.core.types import BrokerConfig
 
-def parse_args():
-    """Parse command line arguments."""
+def main():
+    """Run the MQTT analytics monitoring example."""
     parser = argparse.ArgumentParser(description='Record MQTT analytics data from device')
     parser.add_argument('--host', required=True, help='MQTT broker host IP')
     parser.add_argument('--port', type=int, default=1883, help='MQTT broker port (default: 1883)')
     parser.add_argument('--duration', type=int, default=10, help='Recording duration in seconds (default: 10)')
-    return parser.parse_args()
-
-CAMERA_CONFIG = DeviceConfig.http(
-    host=os.getenv("AX_DEVIL_TARGET_ADDR"),
-    username=os.getenv("AX_DEVIL_TARGET_USER"),
-    password=os.getenv("AX_DEVIL_TARGET_PASS")
-)
-
-async def message_callback(message):
-    """
-    Handle MQTT messages by printing topic and payload.
+    parser.add_argument('--analytics-key', required=False, help='Analytics stream to monitor', default="com.axis.analytics_scene_description.v0.beta#1")
+    args = parser.parse_args()
     
-    Args:
-        message: Dictionary containing 'topic' and 'payload' keys
-    """
-    try:
+    # Validate broker host
+    if args.host == "localhost":
+        print("Error: Cannot use localhost as broker host since camera has to be configured.")
+        print("Find your IP address and use that instead.")
+        sys.exit(1)
+    
+    device_config = DeviceConfig.http(
+        host=os.getenv("AX_DEVIL_TARGET_ADDR"),
+        username=os.getenv("AX_DEVIL_TARGET_USER"),
+        password=os.getenv("AX_DEVIL_TARGET_PASS")
+    )
+    
+    if not device_config.host or not device_config.username or not device_config.password:
+        print("Error: Device IP, username, or password not set. Please set AX_DEVIL_TARGET_ADDR, AX_DEVIL_TARGET_USER, and AX_DEVIL_TARGET_PASS environment variables.")
+        sys.exit(1)
+    
+    # Define message callback
+    def message_callback(message):
+        """Print received MQTT messages."""
         print(f"Topic: {message['topic']}")
         print(f"Data: {message['payload']}")
         print("-" * 50)
-    except Exception as e:
-        print(f"Error processing message: {e}")
-
-class DeviceExample:
-    """
-    Example demonstrating device MQTT integration and message recording.
     
-    This class shows how to:
-    - Set up a connection to an Axis device
-    - Configure MQTT message publishing
-    - Record MQTT messages for a specified duration
-    - Handle graceful shutdown
-    """
+    # Create the analytics manager
+    print(f"Setting up connection to device: {device_config.host}")
+    print(f"Using MQTT broker: {args.host}:{args.port}")
     
-    def __init__(self, broker_host: str, broker_port: int = 1883, duration: int = 10):
-        self.running = True
-        self.manager = None
-        self.duration = duration
-        self.broker_config = BrokerConfig(
-            host=broker_host,
-            port=broker_port
-        )
-
-    def setup(self):
-        """Initialize MQTT stream manager and start monitoring analytics."""
-        print(f"Setting up manager with device config: {CAMERA_CONFIG}")
-        print(f"Using MQTT broker: {self.broker_config.host}:{self.broker_config.port}")
-
-        # Use analytics data source key for device mode
-        analytics_key = "com.axis.analytics_scene_description.v0.beta#1"
-        print(f"Using analytics data source: {analytics_key}")
+    print(f"Using analytics data source key: {args.analytics_key}")
     
-        config = AnalyticsMQTTConfig(
-            device_config=CAMERA_CONFIG,
-            broker_config=self.broker_config,
-            analytics_mqtt_data_source_key=analytics_key,
-            message_callback=message_callback
-        )
-        
-        self.manager = MQTTStreamManager(config)
-
-    async def timed_recording(self):
-        """
-        Handle timed recording sequence.
-        
-        Records MQTT messages for specified duration and saves them to a timestamped file
-        in the recordings directory.
-        
-        Returns:
-            str: Path to the recording file
-        """
-        print("Waiting 1 second before starting recording...")
-        await asyncio.sleep(1)
-        
-        # Start recording with timestamp in filename
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filepath = f"recordings/mqtt_recording_{timestamp}.jsonl"
-        os.makedirs("recordings", exist_ok=True)
-        
-        print(f"Starting recording to {filepath}")
-        self.manager.start(recording_file=filepath)
-        
-        print(f"Recording for {self.duration} seconds...")
-        await asyncio.sleep(self.duration)
-        
-        print("Stopping recording")
-        self.manager.stop()
-        
-        print("\nRecording completed!")
-        print(f"To replay this recording, run:")
-        print(f"python src/ax_devil_mqtt/examples/replay.py {filepath}")
-        
-        self.running = False
-        
-        return filepath
-
-    def signal_handler(self, sig, frame):
-        """Handle graceful shutdown on interrupt signal."""
-        print("\nStopping device monitor...")
-        self.running = False
-        
-        if self.manager:
-            self.manager.stop()
-            
-        sys.exit(0)
-
-    def run(self):
-        """Run the device example with timed recording."""
-        print(f"Device IP: {CAMERA_CONFIG.host}")
-        print(f"MQTT Broker: {self.broker_config.host}:{self.broker_config.port}")
-        print("-" * 50)
-        
-        self.setup()
-        
-        try:
-            loop = asyncio.get_event_loop()
-            loop.run_until_complete(self.timed_recording())
-            
-            while self.running:
-                loop.run_until_complete(asyncio.sleep(1))
-        except Exception as e:
-            print(f"Error: {e}")
-        finally:
-            if self.manager:
-                self.manager.stop()
-
-if __name__ == "__main__":
-    args = parse_args()
-    
-    assert args.host != "localhost", "Cannot use localhost as broker host since camera has to be configured. Find your ip and use that."
-
-    example = DeviceExample(
+    manager = AnalyticsManager(
         broker_host=args.host,
         broker_port=args.port,
-        duration=args.duration
+        device_config=device_config,
+        analytics_data_source_key=args.analytics_key,
+        message_callback=message_callback
     )
-    signal.signal(signal.SIGINT, example.signal_handler)
-    example.run()
+    
+    # Set up signal handler for graceful shutdown
+    def signal_handler(sig, frame):
+        print("\nStopping analytics monitor...")
+        manager.stop()
+        sys.exit(0)
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    
+    # Create recording file with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filepath = f"recordings/mqtt_analytics_recording_{timestamp}.jsonl"
+    
+    print(f"Starting recording to {filepath}")
+    manager.start(recording_file=filepath)
+    
+    print(f"Recording for {args.duration} seconds...")
+    try:
+        for remaining in range(args.duration, 0, -1):
+            print(f"Time remaining: {remaining} seconds", end="\r")
+            time.sleep(1)
+        print("\nRecording complete!                ")
+    except KeyboardInterrupt:
+        print("\nRecording interrupted by user")
+    finally:
+        manager.stop()
+        
+    print(f"\nRecording saved to: {filepath}")
+    print(f"To replay this recording, run:")
+    print(f"python -m ax_devil_mqtt.examples.replay {filepath}")
+
+if __name__ == "__main__":
+    main()

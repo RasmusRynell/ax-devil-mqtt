@@ -37,25 +37,25 @@ A Python package for working with Axis devices MQTT functionality, supporting an
     <tr>
       <td><b>🔌 MQTT Connection</b></td>
       <td>Connect to MQTT brokers and Axis devices</td>
-      <td align="center"><code>MQTTStreamManager</code></td>
+      <td align="center"><code>RawMQTTManager</code></td>
       <td align="center"><a href="#mqtt-connection">ax-devil-mqtt device monitor</a></td>
     </tr>
     <tr>
       <td><b>📊 Analytics Streaming</b></td>
       <td>Stream analytics data from Axis devices via MQTT</td>
-      <td align="center"><code>AnalyticsMQTTConfig</code></td>
+      <td align="center"><code>AnalyticsManager</code></td>
       <td align="center"><a href="#analytics-streaming">ax-devil-mqtt device monitor</a></td>
     </tr>
     <tr>
       <td><b>💾 Data Recording</b></td>
       <td>Record any MQTT data for later replay and analysis</td>
-      <td align="center"><code>manager.record()</code></td>
+      <td align="center"><code>manager.start(recording_file)</code></td>
       <td align="center"><a href="#data-recording">ax-devil-mqtt device monitor --record</a></td>
     </tr>
     <tr>
       <td><b>⏯️ Simulation/Replay</b></td>
       <td>Replay recorded MQTT data for testing and development</td>
-      <td align="center"><code>SimulationConfig</code></td>
+      <td align="center"><code>SimulationManager</code></td>
       <td align="center"><a href="#data-replay">ax-devil-mqtt simulation replay</a></td>
     </tr>
   </tbody>
@@ -92,16 +92,10 @@ export AX_DEVIL_USAGE_CLI="safe" # Set to "unsafe" to skip SSL certificate verif
 
 ```python
 import time
-from ax_devil_mqtt import MQTTStreamManager, AnalyticsMQTTConfig
+from ax_devil_mqtt import AnalyticsManager
 from ax_devil_device_api import DeviceConfig
-from ax_devil_mqtt.core.types import BrokerConfig
 
-# Configure broker and device
-broker_config = BrokerConfig(
-    host="192.168.1.100",
-    port=1883
-)
-
+# Configure device
 device_config = DeviceConfig.http(
     host="192.168.1.200",
     username="root",
@@ -111,15 +105,15 @@ device_config = DeviceConfig.http(
 def message_callback(message):
     print(message)
 
-# Create analytics configuration
-config = AnalyticsMQTTConfig(
-    broker_config=broker_config,
+# Create analytics manager
+manager = AnalyticsManager(
+    broker_host="192.168.1.100",
+    broker_port=1883,
     device_config=device_config,
-    analytics_mqtt_data_source_key="com.axis.analytics_scene_description.v0.beta#1",
+    analytics_data_source_key="com.axis.analytics_scene_description.v0.beta#1",
     message_callback=message_callback
 )
 
-manager = MQTTStreamManager(config)
 manager.start()
 time.sleep(10)
 manager.stop()
@@ -133,19 +127,18 @@ manager.stop()
 
 ```python
 import time
-from ax_devil_mqtt import MQTTStreamManager, SimulationConfig
+from ax_devil_mqtt import SimulationManager
 
 def message_callback(message):
     print(message)
 
-# Create simulation configuration
-config = SimulationConfig(
+# Create simulation manager
+manager = SimulationManager(
     recording_file="recordings/device_recording.jsonl",
     message_callback=message_callback
 )
 
-# Create and start the manager
-manager = MQTTStreamManager(config)
+# Start the manager
 manager.start()
 time.sleep(10)
 manager.stop()
@@ -177,7 +170,7 @@ ax-devil-mqtt device monitor \
     --password <password> \
     --broker <broker-ip> \
     --port 1883 \
-    --streams "com.axis.analytics_scene_description.v0.beta#1" \
+    --stream "com.axis.analytics_scene_description.v0.beta#1" \
     --duration 3600
 ```
 </p>
@@ -195,7 +188,7 @@ ax-devil-mqtt device monitor \
     --password <password> \
     --broker <broker-ip> \
     --port 1883 \
-    --streams "com.axis.analytics_scene_description.v0.beta#1" \
+    --stream "com.axis.analytics_scene_description.v0.beta#1" \
     --record \
     --duration 3600
 ```

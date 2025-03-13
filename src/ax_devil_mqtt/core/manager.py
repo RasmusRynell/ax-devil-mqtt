@@ -1,14 +1,15 @@
 import asyncio
 import threading
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List, Callable
 from concurrent.futures import ThreadPoolExecutor
 import logging
 
 from .subscriber import MQTTSubscriber
 from .replay import ReplayHandler
-from .recorder import MessageRecorder
+from .recorder import Recorder
 from .temporary_analytics_mqtt_publisher import TemporaryAnalyticsMQTTPublisher
-from .types import MQTTConfigBase, RawMQTTConfig, AnalyticsMQTTConfig, SimulationConfig, MQTTStreamState, MessageHandler
+from .types import DataRetriever
+from ax_devil_device_api import DeviceConfig
 
 logger = logging.getLogger(__name__)
 
@@ -62,99 +63,126 @@ class MessageProcessor:
             logger.error(f"Error during executor shutdown: {e}")
         logger.info("Message processor stopped")
 
-class MQTTStreamManager:
-    """
-    Core manager class for handling MQTT message streams.
-    Supports both real-time data streams and simulated replay.
-    """
-    def __init__(self, config: MQTTConfigBase):
-        """Initialize the MQTT stream manager."""
-        self._config = config
-        self._config.validate()
-        
-        self._state = MQTTStreamState()
-        
-        self._message_processor = MessageProcessor(
-            config.message_callback, 
-            config.worker_threads
-        )
-        
-        self._recorder = MessageRecorder(self._message_processor.submit_message)
-        
-        self._analytics_stream = None
-        
-        self._handler: MessageHandler = self._create_handler()
-        
-    def _create_handler(self) -> MessageHandler:
-        """Create the appropriate handler based on configuration."""
-        if isinstance(self._config, RawMQTTConfig):
-            return MQTTSubscriber(
-                broker_host=self._config.broker_config.host,
-                broker_port=self._config.broker_config.port,
-                topics=["ax-devil/temp/raw"],
-                message_callback=self._recorder.record_message
-            )
-            
-        elif isinstance(self._config, AnalyticsMQTTConfig):
-            self._analytics_stream = TemporaryAnalyticsMQTTPublisher(
-                device_config=self._config.device_config,
-                broker_config=self._config.broker_config,
-                topic="ax-devil/temp/analytics",
-                analytics_data_source_key=self._config.analytics_mqtt_data_source_key
-            )
-            
-            return MQTTSubscriber(
-                broker_host=self._config.broker_config.host,
-                broker_port=self._config.broker_config.port,
-                topics=["ax-devil/temp/analytics"],
-                message_callback=self._recorder.record_message
-            )
-            
-        elif isinstance(self._config, SimulationConfig):
-            handler = ReplayHandler(self._recorder.record_message)
-            handler._recording_file = self._config.recording_file
-            return handler
-        
-        else:
-            raise ValueError(f"Unsupported configuration type: {type(self._config)}")
+class StreamManagerBase:
+    """Base class for all stream managers."""
+    def __init__(self, message_callback: Callable[[Dict[str, Any]], None], worker_threads: int = 2):
+        self._is_running = False
+        self._is_recording = False
+        self._message_processor = MessageProcessor(message_callback, worker_threads)
+        self._recorder = Recorder()
+        self._data_retriever: Optional[DataRetriever] = None
 
     def start(self, recording_file: Optional[str] = None):
-        """
-        Start the stream manager.
-        
-        Args:
-            recording_file: Optional file path to record messages to. Only valid in device mode.
-        """
-        if self._state.is_running:
+        """Start the stream manager with optional recording."""
+        if self._is_running:
             logger.warning("Stream manager is already running")
             return
 
         try:
             if recording_file:
                 self._recorder.start_recording(recording_file)
-                self._state.is_recording = True
-            
-            self._handler.start()
-            self._state.is_running = True
-            
-            logger.info("Stream manager started successfully")
+                self._is_recording = True
+                
+            if self._data_retriever:
+                self._data_retriever.start()
+                self._is_running = True
+                logger.info("Stream manager started successfully")
+            else:
+                raise RuntimeError("Handler not initialized")
         except Exception as e:
-            self._state.error_state = str(e)
             logger.error(f"Failed to start stream manager: {e}")
             self.stop()
             raise
 
     def stop(self):
         """Stop the stream manager and clean up resources."""
-        if not self._state.is_running:
+        if not self._is_running:
             return
 
         try:
-            self._handler.stop()
+            if self._data_retriever:
+                self._data_retriever.stop()
             
-            if self._state.is_recording:
+            if self._is_recording:
                 self._recorder.stop_recording()
-                self._state.is_recording = False
+                self._is_recording = False
+                
+            self._message_processor.stop()
+            self._is_running = False
+            
+            logger.info("Stream manager stopped successfully")
+        except Exception as e:
+            logger.error(f"Error during stream manager shutdown: {e}")
+            raise
+
+    def _on_message_callback(self, message: Dict[str, Any]):
+        """Callback for when a message is received."""
+        if self._is_recording:
+            self._recorder.record_message(message)
+        self._message_processor.submit_message(message)
+class RawMQTTManager(StreamManagerBase):
+    """Manager for handling raw MQTT message streams."""
+    def __init__(
+        self, 
+        broker_host: str,
+        broker_port: int,
+        topics: List[str],
+        message_callback: Callable[[Dict[str, Any]], None],
+        worker_threads: int = 2
+    ):
+        if not topics:
+            raise ValueError("MQTT topics must be provided")
+            
+        super().__init__(message_callback, worker_threads)
+        self._broker_host = broker_host
+        self._broker_port = broker_port
+        self._topics = topics
+        self._data_retriever = MQTTSubscriber(
+            broker_host=self._broker_host,
+            broker_port=self._broker_port,
+            topics=self._topics,
+            message_callback=self._on_message_callback
+        )
+
+class AnalyticsManager(StreamManagerBase):
+    """Manager for handling analytics MQTT message streams."""
+    def __init__(
+        self,
+        broker_host: str,
+        broker_port: int,
+        device_config: DeviceConfig,
+        analytics_data_source_key: str,
+        message_callback: Callable[[Dict[str, Any]], None],
+        worker_threads: int = 2,
+        broker_username: str = "",
+        broker_password: str = ""
+    ):
+        if not analytics_data_source_key:
+            raise ValueError("analytics_data_source_key must be provided")
+            
+        super().__init__(message_callback, worker_threads)
+        
+        self._analytics_stream = TemporaryAnalyticsMQTTPublisher(
+            device_config=device_config,
+            broker_host=broker_host,
+            broker_port=broker_port,
+            topic="ax-devil/temp/analytics",
+            analytics_data_source_key=analytics_data_source_key,
+            broker_username=broker_username,
+            broker_password=broker_password
+        )
+        
+        self._data_retriever = MQTTSubscriber(
+            broker_host=broker_host,
+            broker_port=broker_port,
+            topics=["ax-devil/temp/analytics"],
+            message_callback=self._on_message_callback
+        )
+        
+    def stop(self):
+        """Stop the analytics manager and clean up resources."""
+        try:
+            super().stop()
             
             if self._analytics_stream:
                 try:
@@ -162,13 +190,21 @@ class MQTTStreamManager:
                     self._analytics_stream = None
                 except Exception as e:
                     logger.error(f"Error cleaning up analytics stream: {e}")
-            
-            self._message_processor.stop()
-            
-            self._state.is_running = False
-            
-            logger.info("Stream manager stopped successfully")
         except Exception as e:
-            self._state.error_state = str(e)
-            logger.error(f"Error during stream manager shutdown: {e}")
+            logger.error(f"Error during analytics manager shutdown: {e}")
             raise
+
+class SimulationManager(StreamManagerBase):
+    """Manager for simulating MQTT message streams from recorded files."""
+    def __init__(
+        self,
+        recording_file: str,
+        message_callback: Callable[[Dict[str, Any]], None],
+        on_replay_complete: Callable[[], None] = None,
+        worker_threads: int = 2
+    ):
+        if not recording_file:
+            raise ValueError("recording_file must be provided")
+            
+        super().__init__(message_callback, worker_threads)
+        self._data_retriever = ReplayHandler(self._on_message_callback, recording_file, on_replay_complete)

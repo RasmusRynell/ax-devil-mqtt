@@ -1,28 +1,34 @@
 from ax_devil_device_api import Client, DeviceConfig
-from .types import BrokerConfig
 import uuid
 import sys
+import logging
+
+logger = logging.getLogger(__name__)
 
 class TemporaryAnalyticsMQTTPublisher:
     """Automatic temporary MQTT analytics publisher setup and cleanup."""
     
     def __init__(self, 
                  device_config: DeviceConfig,
-                 broker_config: BrokerConfig,
+                 broker_host: str,
+                 broker_port: int,
                  topic: str,
-                 analytics_data_source_key: str = "com.axis.analytics_scene_description.v0.beta#1"):
+                 analytics_data_source_key: str = "com.axis.analytics_scene_description.v0.beta#1",
+                 broker_username: str = "",
+                 broker_password: str = ""):
         self.client = Client(device_config)
         self._cleanup_done = False
+        self._publisher_created = False
         
         self._analytics_publisher_id = None
         self._initial_mqtt_status = self.client.mqtt_client.get_state()
 
         try:
             self.client.mqtt_client.configure(
-                host=broker_config.host,
-                port=broker_config.port,
-                username=broker_config.username,
-                password=broker_config.password
+                host=broker_host,
+                port=broker_port,
+                username=broker_username,
+                password=broker_password
             )
 
             self._publisher_created = self._setup_analytics_publisher(analytics_data_source_key, topic)
@@ -90,7 +96,7 @@ class TemporaryAnalyticsMQTTPublisher:
             self._cleanup_done = True
             self.client.close()
         except Exception as e:
-            print(f"Warning: Error during cleanup: {e}")
+            logger.warning(f"Warning: Error during cleanup: {e}")
 
     def __del__(self):
         """Ensure cleanup when object is destroyed."""

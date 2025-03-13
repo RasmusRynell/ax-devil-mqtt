@@ -6,130 +6,119 @@ import dateutil.parser
 from typing import Dict, Any, Callable, Optional
 import logging
 
-from .types import MessageHandler
+from .types import DataRetriever
 
 logger = logging.getLogger(__name__)
 
-class ReplayHandler(MessageHandler):
-    """
-    Handles replaying recorded messages from a JSONL file.
-    This class is responsible for:
-    - Reading messages from a JSONL recording file
-    - Maintaining original message timing
-    - Directly calling message callbacks without MQTT
-    """
-    def __init__(self, message_callback: Callable[[Dict[str, Any]], None]):
+class ReplayHandler(DataRetriever):
+    """Handles replaying recorded messages from a JSONL file."""
+    def __init__(self, message_callback: Callable[[Dict[str, Any]], None], 
+                recording_file: Optional[str] = None,
+                on_replay_complete: Optional[Callable[[Dict[str, float]], None]] = None):
         self._message_callback = message_callback
+        self._recording_file = recording_file
         self._replay_thread = None
         self._stop_replay = threading.Event()
-        self._lock = threading.Lock()
-        self._recording_file = None
         self._replay_error = None
-        self._completion_callback = None
-
-    def set_completion_callback(self, callback: Callable[[], None]) -> None:
-        """Set a callback to be called when replay is complete."""
-        self._completion_callback = callback
+        self._on_replay_complete = on_replay_complete
+            
+    def is_replaying(self) -> bool:
+        """Check if a replay is currently in progress."""
+        return self._replay_thread is not None and self._replay_thread.is_alive()
 
     def start(self) -> None:
-        """
-        Start the handler, replaying messages from a recording file.
-        """
-        if self._replay_thread and self._replay_thread.is_alive():
+        """Start the handler, replaying messages from a recording file."""
+        if self.is_replaying():
             raise RuntimeError("Replay already in progress")
         
         if self._recording_file is None:
-            raise ValueError("Recording file must be provided during initialization")
+            raise ValueError("Recording file must be provided before starting replay")
             
         self._stop_replay.clear()
+        self._replay_error = None
+        
         self._replay_thread = threading.Thread(
             target=self._replay_worker,
-            args=(self._recording_file,),
             daemon=True
         )
         self._replay_thread.start()
 
     def stop(self) -> None:
         """Stop the current replay if one is in progress."""
-        if self._replay_thread and self._replay_thread.is_alive():
-            self._stop_replay.set()
-            self._replay_thread.join(timeout=5)
-            if self._replay_thread.is_alive():
-                logger.warning("Replay thread did not terminate within timeout")
-            self._replay_thread = None
-
-    def _replay_worker(self, recording_file: str) -> None:
-        """Worker thread for replaying recorded messages."""
-        total_drift = 0
-        max_drift = 0
-        message_count = 0
+        if not self.is_replaying():
+            return
+            
+        self._stop_replay.set()
+            
+        self._replay_thread.join(timeout=5)
+        if self._replay_thread.is_alive():
+            logger.warning("Replay thread did not terminate within timeout")
         
+        self._replay_thread = None
+
+    def _replay_worker(self) -> None:
+        """Worker thread for replaying recorded messages."""
         try:
-            with open(recording_file, 'r') as f:
-                messages = [json.loads(line.strip()) for line in f]
-                if not messages:
-                    logger.warning(f"No messages found in recording file: {recording_file}")
-                    return
-
-                message_times = [
-                    dateutil.parser.parse(msg['timestamp']).timestamp() 
-                    for msg in messages
-                ]
-                
-                replay_start_time = time.time()
-                first_msg_time = message_times[0]
-
-                for i, (message, msg_timestamp) in enumerate(zip(messages, message_times)):
-                    if self._stop_replay.is_set():
-                        break
-
-                    try:
-                        relative_msg_time = msg_timestamp - first_msg_time
-                        target_send_time = replay_start_time + relative_msg_time
-
-                        current_time = time.time()
-                        if current_time < target_send_time:
-                            time.sleep(target_send_time - current_time)
-
-                        topic = message.get('topic')
-                        payload = message.get('payload')
-                        qos = message.get('qos', 1)
-
-                        if not topic or payload is None:
-                            logger.warning(f"Skipping message missing required fields: {message}")
-                            continue
-
-                        self._message_callback(message)
-                        
-                        # Calculate drift for monitoring
-                        actual_send_time = time.time()
-                        drift_ms = (actual_send_time - target_send_time) * 1000
-                        total_drift += drift_ms
-                        max_drift = max(max_drift, abs(drift_ms))
-                        message_count += 1
-                        
-                        logger.info(f"Message {i+1}/{len(messages)} - Drift: {drift_ms:.2f}ms " + 
-                              f"(Target: {datetime.fromtimestamp(target_send_time).isoformat()}, " +
-                              f"Actual: {datetime.fromtimestamp(actual_send_time).isoformat()})")
-
-                    except Exception as e:
-                        logger.error(f"Error processing message {i+1}: {e}")
-
-                # Print drift statistics
-                if message_count > 0:
-                    avg_drift = total_drift / message_count
-                    logger.info(f"\nReplay Statistics:")
-                    logger.info(f"Total messages: {message_count}")
-                    logger.info(f"Average drift: {avg_drift:.2f}ms")
-                    logger.info(f"Maximum drift: {max_drift:.2f}ms")
-
+            stats = self._replay_file(self._recording_file)
+            logger.info(f"Replay complete: {stats}")
+            if self._on_replay_complete and not self._stop_replay.is_set():
+                self._on_replay_complete()
         except FileNotFoundError:
-            logger.error(f"Recording file not found: {recording_file}")
-            self._replay_error = f"Recording file not found: {recording_file}"
+            self._replay_error = f"Recording file not found: {self._recording_file}"
+            logger.error(self._replay_error)
         except Exception as e:
-            logger.error(f"Error reading recording file: {e}")
-            self._replay_error = f"Error reading recording file: {e}"
+            self._replay_error = f"Error during replay: {str(e)}"
+            logger.error(self._replay_error)
         finally:
             self._stop_replay.clear()
-            if self._completion_callback:
-                self._completion_callback() 
+
+    def _replay_file(self, file_path: str) -> Dict[str, float]:
+        """Replay messages from a file, maintaining the original timing between messages."""
+        stats = {"total_drift": 0.0, "max_drift": 0.0, "message_count": 0, "avg_drift": 0.0}
+        reference_time = None
+        replay_start_time = None
+        
+        try:
+            with open(file_path, 'r') as f:
+                for line in f:
+                    if self._stop_replay.is_set():
+                        break
+                        
+                    try:
+                        topic, timestamp, payload = self.get_message(line.strip())
+                        
+                        if reference_time is None:
+                            reference_time = timestamp
+                            replay_start_time = time.time()
+                        
+                        relative_time = timestamp - reference_time
+                        target_send_time = replay_start_time + relative_time
+                        
+                        current_time = time.time()
+                        if current_time < target_send_time and not self._stop_replay.is_set():
+                            time.sleep(target_send_time - current_time)
+                        
+                        self._message_callback(payload)
+                        
+                        actual_send_time = time.time()
+                        drift_ms = (actual_send_time - target_send_time) * 1000
+                        stats["total_drift"] += drift_ms
+                        stats["max_drift"] = max(stats["max_drift"], abs(drift_ms))
+                        stats["message_count"] += 1
+                        
+                    except Exception as e:
+                        logger.error(f"Error processing message: {e}")
+                        
+        except Exception as e:
+            logger.error(f"Error during replay: {e}")
+            
+        if stats["message_count"] > 0:
+            stats["avg_drift"] = stats["total_drift"] / stats["message_count"]
+            
+        return stats
+    
+    def get_message(self, line: str) -> Dict[str, Any]:
+        """Get a message from a line of text."""
+        message = json.loads(line.strip())
+        timestamp = dateutil.parser.parse(message['timestamp']).timestamp()
+        return message['topic'], timestamp, message['payload']

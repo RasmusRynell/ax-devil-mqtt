@@ -7,11 +7,11 @@ from datetime import datetime
 import logging
 import time
 
-from .types import MessageHandler
+from .types import DataRetriever
 
 logger = logging.getLogger(__name__)
 
-class MQTTSubscriber(MessageHandler):
+class MQTTSubscriber(DataRetriever):
     """
     Handles MQTT subscriptions and message processing.
     This class is responsible for:

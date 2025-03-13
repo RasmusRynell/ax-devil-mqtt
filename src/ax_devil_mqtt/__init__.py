@@ -4,19 +4,18 @@ AX Devil MQTT - A Python package for settings up and retrieving data from Axis d
 
 __version__ = "0.1.0"
 
-from .core.manager import MQTTStreamManager
+from .core.manager import RawMQTTManager, AnalyticsManager, SimulationManager
 from .core.subscriber import MQTTSubscriber
 from .core.replay import ReplayHandler
 from .core.temporary_analytics_mqtt_publisher import TemporaryAnalyticsMQTTPublisher
-from .core.types import MQTTConfigBase, RawMQTTConfig, AnalyticsMQTTConfig, SimulationConfig
+from .core.types import DataRetriever
 
 __all__ = [
-    "MQTTStreamManager",
+    "RawMQTTManager",
+    "AnalyticsManager",
+    "SimulationManager",
     "MQTTSubscriber",
     "ReplayHandler",
     "TemporaryAnalyticsMQTTPublisher",
-    "MQTTConfigBase",
-    "RawMQTTConfig",
-    "AnalyticsMQTTConfig",
-    "SimulationConfig"
+    "DataRetriever"
 ] 
