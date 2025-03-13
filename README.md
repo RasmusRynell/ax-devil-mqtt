@@ -35,28 +35,28 @@ A Python package for working with Axis devices MQTT functionality, supporting an
   </thead>
   <tbody>
     <tr>
-      <td><b>🔌 Device Connection</b></td>
-      <td>Connect to Axis devices and access their analytics streams</td>
+      <td><b>🔌 MQTT Connection</b></td>
+      <td>Connect to MQTT brokers and Axis devices</td>
       <td align="center"><code>MQTTStreamManager</code></td>
-      <td align="center"><a href="#device-commands">ax-devil-mqtt device</a></td>
+      <td align="center"><a href="#mqtt-connection">ax-devil-mqtt device monitor</a></td>
     </tr>
     <tr>
-      <td><b>📊 Analytics Monitoring</b></td>
-      <td>Monitor and process analytics data from devices</td>
+      <td><b>📊 Analytics Streaming</b></td>
+      <td>Stream analytics data from Axis devices via MQTT</td>
       <td align="center"><code>AnalyticsMQTTConfig</code></td>
-      <td align="center"><a href="#monitor-analytics">ax-devil-mqtt device monitor</a></td>
+      <td align="center"><a href="#analytics-streaming">ax-devil-mqtt device monitor</a></td>
     </tr>
     <tr>
-      <td><b>💾 Recording</b></td>
-      <td>Record analytics data for later replay and analysis</td>
+      <td><b>💾 Data Recording</b></td>
+      <td>Record any MQTT data for later replay and analysis</td>
       <td align="center"><code>manager.record()</code></td>
-      <td align="center"><a href="#recording-analytics">ax-devil-mqtt device monitor --record</a></td>
+      <td align="center"><a href="#data-recording">ax-devil-mqtt device monitor --record</a></td>
     </tr>
     <tr>
       <td><b>⏯️ Simulation/Replay</b></td>
-      <td>Replay recorded analytics data for testing and development</td>
+      <td>Replay recorded MQTT data for testing and development</td>
       <td align="center"><code>SimulationConfig</code></td>
-      <td align="center"><a href="#replay-analytics">ax-devil-mqtt simulation replay</a></td>
+      <td align="center"><a href="#data-replay">ax-devil-mqtt simulation replay</a></td>
     </tr>
   </tbody>
 </table>
@@ -87,7 +87,7 @@ export AX_DEVIL_USAGE_CLI="safe" # Set to "unsafe" to skip SSL certificate verif
 ### Python API Usage
 
 <details open>
-<summary><b>🔌 Device Connection and Analytics Monitoring</b></summary>
+<summary><b>🔌 MQTT Connection and Analytics Streaming</b></summary>
 <p>
 
 ```python
@@ -156,26 +156,21 @@ manager.stop()
 ### CLI Usage Examples
 
 <details open>
-<summary><a name="device-commands"></a><b>🔌 Device Commands</b></summary>
+<summary><b>🔍 (Optional): Use ax-devil-device-api CLI to find available analytics streams.</b></summary>
 <p>
 
 ```bash
-# List available analytics streams
-ax-devil-device-api-analytics-mqtt \
-    --device-ip <device-ip> \
-    --username <username> \
-    --password <password> \
-    sources
+ax-devil-device-api-analytics-mqtt sources
 ```
 </p>
 </details>
 
-<details>
-<summary><a name="monitor-analytics"></a><b>📊 Monitor Analytics Streams</b></summary>
+<details open>
+<summary><a name="mqtt-connection"></a><a name="analytics-streaming"></a><b>📊 Streaming Analytics via MQTT</b></summary>
 <p>
 
 ```bash
-# Monitor analytics streams
+# Connect to device and stream analytics data
 ax-devil-mqtt device monitor \
     --device-ip <device-ip> \
     --username <username> \
@@ -189,11 +184,11 @@ ax-devil-mqtt device monitor \
 </details>
 
 <details>
-<summary><a name="recording-analytics"></a><b>💾 Recording Analytics</b></summary>
+<summary><a name="data-recording"></a><b>💾 Recording MQTT Data</b></summary>
 <p>
 
 ```bash
-# Monitor and record analytics streams
+# Connect to device, stream analytics data, and record it
 ax-devil-mqtt device monitor \
     --device-ip <device-ip> \
     --username <username> \
@@ -208,11 +203,11 @@ ax-devil-mqtt device monitor \
 </details>
 
 <details>
-<summary><a name="replay-analytics"></a><b>⏯️ Replay Recorded Analytics</b></summary>
+<summary><a name="data-replay"></a><b>⏯️ Replaying Recorded Data</b></summary>
 <p>
 
 ```bash
-# Replay recorded analytics
+# Replay previously recorded MQTT data
 ax-devil-mqtt simulation replay recordings/device_recording.jsonl
 ```
 </p>
