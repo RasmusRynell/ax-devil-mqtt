@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ax-devil-mqtt"
 version = "0.1.0"
-description = "A Python package for settings up and retrieving data from Axis devices using MQTT"
+description = "Python package for setting up and retrieving data from Axis devices using MQTT"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }

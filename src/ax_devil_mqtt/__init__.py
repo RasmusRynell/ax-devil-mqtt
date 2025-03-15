@@ -1,5 +1,5 @@
 """
-AX Devil MQTT - A Python package for settings up and retrieving data from Axis devices using MQTT
+AX Devil MQTT - A Python package for setting up and retrieving data from Axis devices using MQTT
 """
 
 __version__ = "0.1.0"
