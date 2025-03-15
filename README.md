@@ -159,11 +159,10 @@ ax-devil-device-api-analytics-mqtt sources
 </details>
 
 <details open>
-<summary><a name="mqtt-connection"></a><a name="analytics-streaming"></a><b>📊 Streaming Analytics via MQTT</b></summary>
+<summary><a name="mqtt-connection"></a><a name="analytics-streaming"></a><b>📊 Streaming Analytics Data Source</b></summary>
 <p>
 
 ```bash
-# Connect to device and stream analytics data
 ax-devil-mqtt device monitor \
     --device-ip <device-ip> \
     --username <username> \
@@ -181,7 +180,6 @@ ax-devil-mqtt device monitor \
 <p>
 
 ```bash
-# Connect to device, stream analytics data, and record it
 ax-devil-mqtt device monitor \
     --device-ip <device-ip> \
     --username <username> \
@@ -200,7 +198,6 @@ ax-devil-mqtt device monitor \
 <p>
 
 ```bash
-# Replay previously recorded MQTT data
 ax-devil-mqtt replay recordings/device_recording.jsonl
 ```
 </p>
