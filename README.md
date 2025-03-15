@@ -88,9 +88,7 @@ export AX_DEVIL_USAGE_CLI="safe" # Set to "unsafe" to skip SSL certificate verif
 
 ### Python API Usage
 
-<details open>
-<summary><b>🔌 MQTT Connection and Analytics Streaming</b></summary>
-<p>
+🔌 MQTT Connection and Analytics Streaming
 
 ```python
 import time
@@ -117,15 +115,12 @@ manager = AnalyticsManager(
 )
 
 manager.start()
+# or manager.start(recording_file="recordings/some_file_name.jsonl")
 time.sleep(10)
 manager.stop()
 ```
-</p>
-</details>
 
-<details>
-<summary><b>⏯️ Replay</b></summary>
-<p>
+⏯️ Replay
 
 ```python
 import time
@@ -145,8 +140,6 @@ manager.start()
 time.sleep(10)
 manager.stop()
 ```
-</p>
-</details>
 
 ### CLI Usage Examples
 
