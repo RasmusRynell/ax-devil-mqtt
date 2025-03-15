@@ -8,6 +8,8 @@
 
 A Python package for working with Axis devices MQTT functionality, supporting analytics recording and replay over external MQTT brokers.
 
+See also: [ax-devil-device-api](https://github.com/rasmusrynell/ax-devil-device-api) for device API integration.
+
 </div>
 
 ---
