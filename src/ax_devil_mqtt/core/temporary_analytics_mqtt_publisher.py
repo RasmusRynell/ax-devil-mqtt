@@ -85,9 +85,7 @@ class TemporaryAnalyticsMQTTPublisher:
         return True # publisher created
 
     def cleanup(self):
-        """
-        Clean up resources and restore the device to its original state.
-        """
+        """Clean up resources and restore the device to its original state."""
         if self._cleanup_done:
             return
             

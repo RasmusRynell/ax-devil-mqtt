@@ -1,7 +1,6 @@
 """
 Pytest configuration and fixtures for ax-devil-mqtt tests.
 """
-import os
 import json
 import pytest
 from datetime import datetime, timedelta

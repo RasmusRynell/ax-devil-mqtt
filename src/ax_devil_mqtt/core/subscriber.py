@@ -1,7 +1,5 @@
 import paho.mqtt.client as mqtt
 from typing import Callable, Dict, Any, List
-import threading
-import queue
 import json
 from datetime import datetime
 import logging
