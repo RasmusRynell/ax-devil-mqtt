@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Type Hints](https://img.shields.io/badge/Type%20Hints-Strict-brightgreen.svg)](https://www.python.org/dev/peps/pep-0484/)
 
-Python package for working with Axis devices MQTT functionality, supporting analytics recording and replay.
+Python package for working with Axis devices MQTT functionality.
 
 See also: [ax-devil-device-api](https://github.com/rasmusrynell/ax-devil-device-api) for device API integration.
 
