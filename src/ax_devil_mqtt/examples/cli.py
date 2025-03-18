@@ -39,6 +39,13 @@ def monitor(device_ip, username, password, broker, port, stream, record, duratio
     """Monitor a specific analytics stream"""
     assert broker != "localhost", "Cannot use localhost as broker host since camera has to be configured. Find your ip and use that."
 
+    assert device_ip != None, "Device IP is required, supply or set AX_DEVIL_TARGET_ADDR environment variable"
+    assert username != None, "Username is required, supply or set AX_DEVIL_TARGET_USER environment variable"
+    assert password != None, "Password is required, supply or set AX_DEVIL_TARGET_PASS environment variable"
+    print(f"Device IP: {device_ip}")
+    print(f"Username: {username}")
+    print(f"Password: {password}")
+
     device_config = DeviceConfig.http(
         host=device_ip,
         username=username,
