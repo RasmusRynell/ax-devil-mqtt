@@ -163,6 +163,7 @@ class AnalyticsManager(StreamManagerBase):
             
         super().__init__(message_callback, worker_threads)
         
+        small_hash = hashlib.sha256(analytics_data_source_key.encode()).hexdigest()[:8]
         self._analytics_stream = TemporaryAnalyticsMQTTPublisher(
             device_config=device_config,
             broker_host=broker_host,
