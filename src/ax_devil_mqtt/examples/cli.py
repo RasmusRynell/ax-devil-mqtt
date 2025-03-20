@@ -4,7 +4,7 @@ import asyncio
 import os
 from pathlib import Path
 from ax_devil_mqtt.core.manager import ReplayManager, AnalyticsManager
-from ax_devil_device_api import DeviceConfig
+from ax_devil_device_api import Client, DeviceConfig
 
 async def default_message_callback(message):
     """Default callback to print received messages."""
@@ -22,7 +22,30 @@ def device():
     """Commands for interacting with live devices"""
     pass
 
-@device.command("monitor")
+@device.command("clean", help="Clean all temporary MQTT publishers")
+@click.option("--device-ip", default=lambda: os.getenv('AX_DEVIL_TARGET_ADDR'),
+                     required=False, help='Device IP address or hostname')
+@click.option("--username", default=lambda: os.getenv('AX_DEVIL_TARGET_USER'),
+                     required=False, help='Username for authentication')
+@click.option("--password", default=lambda: os.getenv('AX_DEVIL_TARGET_PASS'),
+                     required=False, help='Password for authentication')
+def clean(device_ip, username, password): 
+    """Clean all temporary MQTT publishers"""
+    device_config = DeviceConfig.http(
+        host=device_ip,
+        username=username,
+        password=password
+    )
+    
+    client = Client(device_config)
+    for publisher in client.analytics_mqtt.list_publishers():
+        topic = publisher.get("mqtt_topic")
+        id = publisher.get("id")
+        if topic.startswith("ax-devil/temp/"):
+            print(f"Deleting publisher {topic} ({id})")
+            client.analytics_mqtt.remove_publisher(id)
+
+@device.command("monitor", help="Monitor a specific analytics stream")
 @click.option("--device-ip", default=lambda: os.getenv('AX_DEVIL_TARGET_ADDR'),
                      required=False, help='Device IP address or hostname')
 @click.option("--username", default=lambda: os.getenv('AX_DEVIL_TARGET_USER'),
@@ -42,9 +65,6 @@ def monitor(device_ip, username, password, broker, port, stream, record, duratio
     assert device_ip != None, "Device IP is required, supply or set AX_DEVIL_TARGET_ADDR environment variable"
     assert username != None, "Username is required, supply or set AX_DEVIL_TARGET_USER environment variable"
     assert password != None, "Password is required, supply or set AX_DEVIL_TARGET_PASS environment variable"
-    print(f"Device IP: {device_ip}")
-    print(f"Username: {username}")
-    print(f"Password: {password}")
 
     device_config = DeviceConfig.http(
         host=device_ip,
