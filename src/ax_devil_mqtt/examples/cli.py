@@ -22,6 +22,33 @@ def device():
     """Commands for interacting with live devices"""
     pass
 
+@device.command("open-api", help="Open the device API in browser")
+@click.option("--device-ip", default=lambda: os.getenv('AX_DEVIL_TARGET_ADDR'),
+                     required=False, help='Device IP address or hostname')
+@click.option("--username", default=lambda: os.getenv('AX_DEVIL_TARGET_USER'),
+                     required=False, help='Username for authentication')
+@click.option("--password", default=lambda: os.getenv('AX_DEVIL_TARGET_PASS'),
+                     required=False, help='Password for authentication')
+def open_api(device_ip, username, password):
+    """Open the device API"""
+    assert device_ip != None, "Device IP is required, supply or set AX_DEVIL_TARGET_ADDR environment variable"
+    assert username != None, "Username is required, supply or set AX_DEVIL_TARGET_USER environment variable"
+    assert password != None, "Password is required, supply or set AX_DEVIL_TARGET_PASS environment variable"
+
+    device_config = DeviceConfig.http(
+        host=device_ip,
+        username=username,
+        password=password
+    )
+
+    client = Client(device_config)
+    apis = client.discovery.discover()
+    analytics_api = apis.get_api("analytics-mqtt")
+
+    import webbrowser
+    webbrowser.open(f"https://{device_ip}{analytics_api.rest_ui_url}")
+
+
 @device.command("clean", help="Clean all temporary MQTT publishers")
 @click.option("--device-ip", default=lambda: os.getenv('AX_DEVIL_TARGET_ADDR'),
                      required=False, help='Device IP address or hostname')
