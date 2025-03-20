@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import threading
 from typing import Any, Dict, Optional, List, Callable
 from concurrent.futures import ThreadPoolExecutor
@@ -166,7 +167,7 @@ class AnalyticsManager(StreamManagerBase):
             device_config=device_config,
             broker_host=broker_host,
             broker_port=broker_port,
-            topic="ax-devil/temp/analytics",
+            topic=f"ax-devil/temp/{small_hash}",
             analytics_data_source_key=analytics_data_source_key,
             broker_username=broker_username,
             broker_password=broker_password
@@ -175,7 +176,7 @@ class AnalyticsManager(StreamManagerBase):
         self._data_retriever = MQTTSubscriber(
             broker_host=broker_host,
             broker_port=broker_port,
-            topics=["ax-devil/temp/analytics"],
+            topics=[f"ax-devil/temp/{small_hash}"],
             message_callback=self._on_message_callback
         )
         
