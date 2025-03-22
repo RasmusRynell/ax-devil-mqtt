@@ -15,7 +15,8 @@ class TemporaryAnalyticsMQTTPublisher:
                  topic: str,
                  analytics_data_source_key: str = "com.axis.analytics_scene_description.v0.beta#1",
                  broker_username: str = "",
-                 broker_password: str = ""):
+                 broker_password: str = "",
+                 client_id: str = ""):
         self.client = Client(device_config)
         self._cleanup_done = False
         self._publisher_created = False
@@ -24,11 +25,15 @@ class TemporaryAnalyticsMQTTPublisher:
         self._initial_mqtt_status = self.client.mqtt_client.get_state()
 
         try:
+            if not client_id:
+                client_id = str(uuid.uuid4())[:8]
+
             self.client.mqtt_client.configure(
                 host=broker_host,
                 port=broker_port,
                 username=broker_username,
-                password=broker_password
+                password=broker_password,
+                client_id=client_id
             )
 
             self._publisher_created = self._setup_analytics_publisher(analytics_data_source_key, topic)
