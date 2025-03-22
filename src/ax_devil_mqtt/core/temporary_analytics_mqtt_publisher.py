@@ -13,21 +13,20 @@ class TemporaryAnalyticsMQTTPublisher:
                  broker_host: str,
                  broker_port: int,
                  topic: str,
+                 client_id: str,
                  analytics_data_source_key: str = "com.axis.analytics_scene_description.v0.beta#1",
                  broker_username: str = "",
-                 broker_password: str = "",
-                 client_id: str = ""):
+                 broker_password: str = ""):
         self.client = Client(device_config)
         self._cleanup_done = False
         self._publisher_created = False
         
         self._analytics_publisher_id = None
+        self._initial_mqtt_status = None
+
         self._initial_mqtt_status = self.client.mqtt_client.get_state()
 
         try:
-            if not client_id:
-                client_id = str(uuid.uuid4())[:8]
-
             self.client.mqtt_client.configure(
                 host=broker_host,
                 port=broker_port,
@@ -55,13 +54,13 @@ class TemporaryAnalyticsMQTTPublisher:
                 self.client.analytics_mqtt.remove_publisher(self._analytics_publisher_id)
 
             # Restore MQTT state
-            if hasattr(self.client, "_initial_mqtt_status"):
-                if self._initial_mqtt_status and self._initial_mqtt_status["config"]:
-                    self.client.mqtt_client.set_state(self._initial_mqtt_status["config"])
-                if self._initial_mqtt_status["status"]["state"] == "active":
-                    self.client.mqtt_client.activate()
-                else:
-                    self.client.mqtt_client.deactivate()
+            print(f"Initial MQTT status: {self._initial_mqtt_status}")
+            if self._initial_mqtt_status and self._initial_mqtt_status["config"]:
+                self.client.mqtt_client.set_state(self._initial_mqtt_status["config"])
+            if self._initial_mqtt_status["status"]["state"] == "active":
+                self.client.mqtt_client.activate()
+            else:
+                self.client.mqtt_client.deactivate()
         except Exception as e:
             raise RuntimeError(f"Error during device state restoration: {e}")
 

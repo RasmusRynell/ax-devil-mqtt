@@ -169,6 +169,7 @@ class AnalyticsManager(StreamManagerBase):
             broker_host=broker_host,
             broker_port=broker_port,
             topic=f"ax-devil/temp/{small_hash}",
+            client_id=f"ax-devil/temp/{small_hash}",
             analytics_data_source_key=analytics_data_source_key,
             broker_username=broker_username,
             broker_password=broker_password
