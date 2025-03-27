@@ -54,7 +54,6 @@ class TemporaryAnalyticsMQTTPublisher:
                 self.client.analytics_mqtt.remove_publisher(self._analytics_publisher_id)
 
             # Restore MQTT state
-            print(f"Initial MQTT status: {self._initial_mqtt_status}")
             if self._initial_mqtt_status and self._initial_mqtt_status["config"]:
                 self.client.mqtt_client.set_state(self._initial_mqtt_status["config"])
             if self._initial_mqtt_status["status"]["state"] == "active":
