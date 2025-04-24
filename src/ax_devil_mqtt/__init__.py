@@ -2,7 +2,7 @@
 AX Devil MQTT - A Python package for setting up and retrieving data from Axis devices using MQTT
 """
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 
 from .core.manager import RawMQTTManager, AnalyticsManager, ReplayManager
 from .core.subscriber import MQTTSubscriber
