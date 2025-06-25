@@ -2,6 +2,7 @@ from ax_devil_device_api import Client, DeviceConfig
 import uuid
 import sys
 import logging
+from typing import Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +22,8 @@ class TemporaryAnalyticsMQTTPublisher:
         self._cleanup_done = False
         self._publisher_created = False
         
-        self._analytics_publisher_id = None
-        self._initial_mqtt_status = None
+        self._analytics_publisher_id: Optional[str] = None
+        self._initial_mqtt_status: Optional[Dict[str, Any]] = None
 
         self._initial_mqtt_status = self.client.mqtt_client.get_state()
 

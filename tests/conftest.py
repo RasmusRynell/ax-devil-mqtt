@@ -4,7 +4,6 @@ Pytest configuration and fixtures for ax-devil-mqtt tests.
 import json
 import pytest
 from datetime import datetime, timedelta
-from pathlib import Path
 
 
 @pytest.fixture

@@ -1,11 +1,11 @@
 import paho.mqtt.client as mqtt
-from typing import Callable, Dict, Any, List
+from typing import List
 import json
 from datetime import datetime
 import logging
 import time
 
-from .types import DataRetriever
+from .types import DataRetriever, MQTTMessage, MessageCallback
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class MQTTSubscriber(DataRetriever):
         broker_host: str,
         broker_port: int,
         topics: List[str],
-        message_callback: Callable[[Dict[str, Any]], None],
+        message_callback: MessageCallback,
         connection_timeout_seconds: int = 5
     ):
         self._broker_host = broker_host
@@ -51,21 +51,24 @@ class MQTTSubscriber(DataRetriever):
     def _on_message(self, client, userdata, message):
         """Internal callback for handling incoming messages"""
         try:
-            msg = {
-                'timestamp': datetime.now().isoformat(),
-                'topic': message.topic,
-                'payload': message.payload.decode(),
-                'qos': message.qos,
-                'retain': message.retain
-            }
-            
+            # Decode payload
+            payload_str = message.payload.decode()
             try:
-                msg['payload'] = json.loads(msg['payload'])
+                payload = json.loads(payload_str)
             except json.JSONDecodeError:
-                pass
+                payload = payload_str
+            
+            # Create typed message
+            mqtt_message = MQTTMessage(
+                timestamp=datetime.now().isoformat(),
+                topic=message.topic,
+                payload=payload,
+                qos=message.qos,
+                retain=message.retain
+            )
             
             if self._message_callback:
-                self._message_callback(msg)
+                self._message_callback(mqtt_message)
         except Exception as e:
             logger.error(f"Error processing message: {e}")
 

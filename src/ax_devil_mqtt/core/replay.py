@@ -2,23 +2,23 @@ import json
 import threading
 import time
 import dateutil.parser
-from typing import Dict, Any, Callable, Optional
+from typing import Dict, Any, Optional
 import logging
 
-from .types import DataRetriever
+from .types import DataRetriever, MessageCallback, BaseMessage, ReplayCompleteCallback, ReplayStats
 
 logger = logging.getLogger(__name__)
 
 class ReplayHandler(DataRetriever):
     """Handles replaying recorded messages from a JSONL file."""
-    def __init__(self, message_callback: Callable[[Dict[str, Any]], None], 
+    def __init__(self, message_callback: MessageCallback, 
                 recording_file: Optional[str] = None,
-                on_replay_complete: Optional[Callable[[Dict[str, float]], None]] = None):
+                on_replay_complete: Optional[ReplayCompleteCallback] = None):
         self._message_callback = message_callback
         self._recording_file = recording_file
-        self._replay_thread = None
+        self._replay_thread: threading.Thread | None = None
         self._stop_replay = threading.Event()
-        self._replay_error = None
+        self._replay_error: str | None = None
         self._on_replay_complete = on_replay_complete
             
     def is_replaying(self) -> bool:
@@ -48,20 +48,23 @@ class ReplayHandler(DataRetriever):
             return
             
         self._stop_replay.set()
-            
-        self._replay_thread.join(timeout=5)
-        if self._replay_thread.is_alive():
-            logger.warning("Replay thread did not terminate within timeout")
+        if self._replay_thread:
+            self._replay_thread.join(timeout=5)
+            if self._replay_thread.is_alive():
+                logger.warning("Replay thread did not terminate within timeout")
         
         self._replay_thread = None
 
     def _replay_worker(self) -> None:
         """Worker thread for replaying recorded messages."""
         try:
-            stats = self._replay_file(self._recording_file)
+            if not self._recording_file:
+                raise ValueError("Recording file must be provided before starting replay")
+            stats_dict = self._replay_file(self._recording_file)
+            stats = ReplayStats.from_dict(stats_dict)
             logger.info(f"Replay complete: {stats}")
             if self._on_replay_complete and not self._stop_replay.is_set():
-                self._on_replay_complete()
+                self._on_replay_complete(stats)
         except FileNotFoundError:
             self._replay_error = f"Recording file not found: {self._recording_file}"
             logger.error(self._replay_error)
@@ -74,8 +77,8 @@ class ReplayHandler(DataRetriever):
     def _replay_file(self, file_path: str) -> Dict[str, float]:
         """Replay messages from a file, maintaining the original timing between messages."""
         stats = {"total_drift": 0.0, "max_drift": 0.0, "message_count": 0, "avg_drift": 0.0}
-        reference_time = None
-        replay_start_time = None
+        reference_time: Optional[float] = None
+        replay_start_time: Optional[float] = None
         
         try:
             with open(file_path, 'r') as f:
@@ -90,6 +93,9 @@ class ReplayHandler(DataRetriever):
                             reference_time = timestamp
                             replay_start_time = time.time()
                         
+                        if reference_time is None or replay_start_time is None:
+                            continue  # Skip if we don't have reference times
+                        
                         relative_time = timestamp - reference_time
                         target_send_time = replay_start_time + relative_time
                         
@@ -97,7 +103,10 @@ class ReplayHandler(DataRetriever):
                         if current_time < target_send_time and not self._stop_replay.is_set():
                             time.sleep(target_send_time - current_time)
                         
-                        self._message_callback(payload)
+                        # Create typed message from replay data
+                        message_dict = json.loads(line.strip())
+                        typed_message = BaseMessage.from_dict(message_dict)
+                        self._message_callback(typed_message)
                         
                         actual_send_time = time.time()
                         drift_ms = (actual_send_time - target_send_time) * 1000
@@ -116,7 +125,7 @@ class ReplayHandler(DataRetriever):
             
         return stats
     
-    def get_message(self, line: str) -> Dict[str, Any]:
+    def get_message(self, line: str) -> tuple[str, float, Any]:
         """Get a message from a line of text."""
         message = json.loads(line.strip())
         timestamp = dateutil.parser.parse(message['timestamp']).timestamp()

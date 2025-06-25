@@ -4,12 +4,13 @@ import asyncio
 import os
 from pathlib import Path
 from ax_devil_mqtt.core.manager import ReplayManager, AnalyticsManager
+from ax_devil_mqtt.core.types import Message, ReplayStats
 from ax_devil_device_api import Client, DeviceConfig
 
-async def default_message_callback(message):
-    """Default callback to print received messages."""
-    click.echo(f"Topic: {message.get('topic', 'unknown')}")
-    click.echo(f"Data: {message.get('payload', message)}")
+async def default_message_callback(message: Message):
+    """Default callback to print received messages with strong typing."""
+    click.echo(f"Topic: {message.topic}")
+    click.echo(f"Data: {message.payload}")
     click.echo("-" * 50)
 
 def validate_device_credentials(device_ip, username, password):
@@ -152,8 +153,12 @@ def replay(recording_file):
     
     loop = asyncio.get_event_loop()
     
-    def on_replay_complete():
-        click.echo("\nReplay completed. Exiting...")
+    def on_replay_complete(stats: ReplayStats):
+        click.echo(f"\nReplay completed!")
+        click.echo(f"  Total messages: {stats.message_count}")
+        click.echo(f"  Average drift: {stats.avg_drift:.2f}ms")
+        click.echo(f"  Max drift: {stats.max_drift:.2f}ms")
+        click.echo("Exiting...")
         loop.call_soon_threadsafe(loop.stop)
     
     manager = ReplayManager(

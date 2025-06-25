@@ -3,6 +3,7 @@ Tests for message processing functionality that don't require a device.
 """
 import time
 from ax_devil_mqtt.core.manager import MessageProcessor
+from ax_devil_mqtt.core.types import BaseMessage
 
 
 def test_message_processor_basic():
@@ -13,13 +14,13 @@ def test_message_processor_basic():
     
     processor = MessageProcessor(callback=callback, worker_threads=1)
     
-    test_message = {"topic": "test/topic", "payload": "test_payload"}
+    test_message = BaseMessage(topic="test/topic", payload="test_payload", timestamp="2023-01-01T00:00:00Z")
     processor.submit_message(test_message)
     
     time.sleep(0.1)
     
     assert len(processed_messages) == 1
-    assert processed_messages[0]["payload"] == "test_payload"
+    assert processed_messages[0].payload == "test_payload"
 
 
 def test_message_processor_multiple_messages():
@@ -31,13 +32,13 @@ def test_message_processor_multiple_messages():
     processor = MessageProcessor(callback=callback, worker_threads=2)
     
     for i in range(5):
-        test_message = {"topic": f"test/topic/{i}", "payload": f"test_payload_{i}"}
+        test_message = BaseMessage(topic=f"test/topic/{i}", payload=f"test_payload_{i}", timestamp="2023-01-01T00:00:00Z")
         processor.submit_message(test_message)
     
     time.sleep(0.2)
     
     assert len(processed_messages) == 5
-    payloads = [msg["payload"] for msg in processed_messages]
+    payloads = [msg.payload for msg in processed_messages]
     for i in range(5):
         assert f"test_payload_{i}" in payloads
 
@@ -52,7 +53,7 @@ def test_message_processor_error_handling():
     
     processor = MessageProcessor(callback=error_callback, worker_threads=1)
     
-    test_message = {"topic": "test/topic", "payload": "test_payload"}
+    test_message = BaseMessage(topic="test/topic", payload="test_payload", timestamp="2023-01-01T00:00:00Z")
     
     processor.submit_message(test_message)
     

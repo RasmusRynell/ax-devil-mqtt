@@ -93,6 +93,7 @@ export AX_DEVIL_USAGE_CLI="safe" # Set to "unsafe" to skip SSL certificate verif
 ```python
 import time
 from ax_devil_mqtt import AnalyticsManager
+from ax_devil_mqtt.core.types import Message
 from ax_devil_device_api import DeviceConfig
 
 # Configure device
@@ -102,8 +103,10 @@ device_config = DeviceConfig.http(
     password="pass"
 )
 
-def message_callback(message):
-    print(message)
+def message_callback(message: Message):
+    print(f"Topic: {message.topic}")
+    print(f"Payload: {message.payload}")
+    print(f"Timestamp: {message.timestamp}")
 
 # Create analytics manager
 manager = AnalyticsManager(
@@ -125,14 +128,24 @@ manager.stop()
 ```python
 import time
 from ax_devil_mqtt import ReplayManager
+from ax_devil_mqtt.core.types import Message, ReplayStats
 
-def message_callback(message):
-    print(message)
+def message_callback(message: Message):
+    print(f"Topic: {message.topic}")
+    print(f"Payload: {message.payload}")
+    print(f"Timestamp: {message.timestamp}")
+
+def on_replay_complete(stats: ReplayStats):
+    print(f"Replay completed!")
+    print(f"  Total messages: {stats.message_count}")
+    print(f"  Average drift: {stats.avg_drift:.2f}ms")
+    print(f"  Max drift: {stats.max_drift:.2f}ms")
 
 # Create a replay manager
 manager = ReplayManager(
     recording_file="recordings/device_recording.jsonl",
-    message_callback=message_callback
+    message_callback=message_callback,
+    on_replay_complete=on_replay_complete
 )
 
 # Start the manager
