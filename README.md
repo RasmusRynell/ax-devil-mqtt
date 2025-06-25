@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Type Hints](https://img.shields.io/badge/Type%20Hints-Strict-brightgreen.svg)](https://www.python.org/dev/peps/pep-0484/)
 
-Python package for working with Axis devices MQTT functionality.
+Python package for retrieving analytics data from Axis devices over MQTT.
 
 See also: [ax-devil-device-api](https://github.com/rasmusrynell/ax-devil-device-api) for device API integration.
 
@@ -37,20 +37,20 @@ See also: [ax-devil-device-api](https://github.com/rasmusrynell/ax-devil-device-
   </thead>
   <tbody>
     <tr>
-      <td><b>🔌 MQTT Connection</b></td>
-      <td>Connect to MQTT brokers and Axis devices</td>
+      <td><b>🔌 Device Setup</b></td>
+      <td>Configure Axis devices for analytics MQTT publishing</td>
       <td align="center"><code>RawMQTTManager</code></td>
       <td align="center"><a href="#mqtt-connection">ax-devil-mqtt device monitor</a></td>
     </tr>
     <tr>
       <td><b>📊 Analytics Streaming</b></td>
-      <td>Stream analytics data from Axis devices via MQTT</td>
+      <td>Stream analytics data from Axis devices with automated setup</td>
       <td align="center"><code>AnalyticsManager</code></td>
       <td align="center"><a href="#analytics-streaming">ax-devil-mqtt device monitor</a></td>
     </tr>
     <tr>
       <td><b>💾 Data Recording</b></td>
-      <td>Record any MQTT data for later replay and analysis</td>
+      <td>Record analytics MQTT data for later replay and analysis</td>
       <td align="center"><code>manager.start(recording_file)</code></td>
       <td align="center"><a href="#data-recording">ax-devil-mqtt device monitor --record</a></td>
     </tr>
@@ -144,11 +144,17 @@ manager.stop()
 ### CLI Usage Examples
 
 <details open>
-<summary><b>🔍 (Optional): Use ax-devil-device-api CLI to find available analytics streams.</b></summary>
+<summary><b>🔍 Discover Available Analytics Streams</b></summary>
 <p>
 
+Using ax-devil-device-api:
 ```bash
 ax-devil-device-api-analytics-mqtt sources
+```
+
+Or discover and list with ax-devil-mqtt:
+```bash
+ax-devil-mqtt device list-sources --device-ip <device-ip> --username <username> --password <password>
 ```
 </p>
 </details>

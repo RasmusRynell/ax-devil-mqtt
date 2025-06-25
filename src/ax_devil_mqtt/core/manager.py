@@ -203,7 +203,7 @@ class ReplayManager(StreamManagerBase):
         self,
         recording_file: str,
         message_callback: Callable[[Dict[str, Any]], None],
-        on_replay_complete: Callable[[], None] = None,
+        on_replay_complete: Optional[Callable[[], None]] = None,
         worker_threads: int = 2
     ):
         if not recording_file:
