@@ -1,7 +1,7 @@
 import asyncio
 import hashlib
 import threading
-from typing import Any, Dict, Optional, List, Callable
+from typing import Any, Dict, Optional, List
 from concurrent.futures import ThreadPoolExecutor
 import logging
 
@@ -9,7 +9,7 @@ from .subscriber import MQTTSubscriber
 from .replay import ReplayHandler
 from .recorder import Recorder
 from .temporary_analytics_mqtt_publisher import TemporaryAnalyticsMQTTPublisher
-from .types import DataRetriever
+from .types import DataRetriever, Message, MessageCallback, ReplayCompleteCallback
 from ax_devil_device_api import DeviceConfig
 
 logger = logging.getLogger(__name__)
@@ -17,16 +17,14 @@ logger = logging.getLogger(__name__)
 class MessageProcessor:
     """Handles message processing and callback execution."""
     
-    def __init__(self, callback, worker_threads: int):
+    def __init__(self, callback: MessageCallback, worker_threads: int):
         self.callback = callback
         self._executor = ThreadPoolExecutor(max_workers=worker_threads)
         self._stop_event = threading.Event()
         self._lock = threading.Lock()
 
-    def process_message(self, message: Dict[str, Any]):
+    def process_message(self, message: Message):
         """Process a message using the provided callback."""
-        if not self.callback:
-            return
 
         try:
             if asyncio.iscoroutinefunction(self.callback):
@@ -36,12 +34,12 @@ class MessageProcessor:
         except Exception as e:
             logger.error(
                 f"Error in message callback: {str(e)}. "
-                f"Message topic: {message.get('topic', 'unknown')}, "
+                f"Message topic: {message.topic}, "
                 f"Message size: {len(str(message))} bytes"
             )
             raise  # Re-raise to let the executor handle the failure
 
-    def submit_message(self, message: Dict[str, Any]) -> None:
+    def submit_message(self, message: Message) -> None:
         """Submit a message for processing."""
         with self._lock:
             if self._stop_event.is_set():
@@ -66,7 +64,7 @@ class MessageProcessor:
 
 class StreamManagerBase:
     """Base class for all stream managers."""
-    def __init__(self, message_callback: Callable[[Dict[str, Any]], None], worker_threads: int = 2):
+    def __init__(self, message_callback: MessageCallback, worker_threads: int = 2):
         self._is_running = False
         self._is_recording = False
         self._message_processor = MessageProcessor(message_callback, worker_threads)
@@ -116,11 +114,12 @@ class StreamManagerBase:
             logger.error(f"Error during stream manager shutdown: {e}")
             raise
 
-    def _on_message_callback(self, message: Dict[str, Any]):
+    def _on_message_callback(self, message: Message):
         """Callback for when a message is received."""
         if self._is_recording:
-            self._recorder.record_message(message)
+            self._recorder.record_message(message.to_dict())  # Recorder still needs dict format
         self._message_processor.submit_message(message)
+
 class RawMQTTManager(StreamManagerBase):
     """Manager for handling raw MQTT message streams."""
     def __init__(
@@ -128,7 +127,7 @@ class RawMQTTManager(StreamManagerBase):
         broker_host: str,
         broker_port: int,
         topics: List[str],
-        message_callback: Callable[[Dict[str, Any]], None],
+        message_callback: MessageCallback,
         worker_threads: int = 2
     ):
         if not topics:
@@ -153,7 +152,7 @@ class AnalyticsManager(StreamManagerBase):
         broker_port: int,
         device_config: DeviceConfig,
         analytics_data_source_key: str,
-        message_callback: Callable[[Dict[str, Any]], None],
+        message_callback: MessageCallback,
         worker_threads: int = 2,
         broker_username: str = "",
         broker_password: str = ""
@@ -202,8 +201,8 @@ class ReplayManager(StreamManagerBase):
     def __init__(
         self,
         recording_file: str,
-        message_callback: Callable[[Dict[str, Any]], None],
-        on_replay_complete: Optional[Callable[[], None]] = None,
+        message_callback: MessageCallback,
+        on_replay_complete: Optional[ReplayCompleteCallback] = None,
         worker_threads: int = 2
     ):
         if not recording_file:

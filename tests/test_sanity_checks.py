@@ -66,8 +66,11 @@ def test_replay_handler_with_sample_file(tmp_path):
     handler.stop()
     
     assert len(received_messages) == 2
-    assert received_messages[0] == "test_payload"  # The ReplayHandler returns just the payload
-    assert received_messages[1] == "test_payload2"
+    # ReplayHandler now returns typed BaseMessage objects
+    assert received_messages[0].topic == "test/topic"
+    assert received_messages[0].payload == "test_payload"
+    assert received_messages[1].topic == "test/topic2"
+    assert received_messages[1].payload == "test_payload2"
 
 
 def test_replay_handler_error_handling():
