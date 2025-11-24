@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import time
-from typing import Callable
+from typing import Any, Callable, TypeVar
 
 import click
 from ax_devil_device_api import Client, DeviceConfig
@@ -10,6 +10,8 @@ from ax_devil_mqtt.core.types import MqttMessage
 from ax_devil_mqtt import __version__
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
+
+F = TypeVar("F", bound=Callable[..., Any])
 
 
 def default_message_callback(message: MqttMessage) -> None:
@@ -22,7 +24,7 @@ def build_device_config(device_ip: str, device_username: str, device_password: s
     return DeviceConfig.http(host=device_ip, username=device_username, password=device_password)
 
 
-def device_options(func: Callable) -> Callable:
+def device_options(func: F) -> F:
     """Decorator to add common device options to commands."""
     func = click.option(
         "--device-password",

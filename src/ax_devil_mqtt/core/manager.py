@@ -35,18 +35,18 @@ class RawMqttClient:
 
         self._broker_host = broker_host
         self._broker_port = broker_port
-        self._topics = list(topics or [])
-        self._message_callback = message_callback
+        self._topics: List[str] = list(topics or [])
+        self._message_callback: MessageCallback = message_callback
         self._connection_timeout_seconds = connection_timeout_seconds
         self._broker_username = broker_username
         self._broker_password = broker_password
-        self._connected = False
+        self._connected: bool = False
         self._connection_error: Optional[str] = None
-        self._stop_event = threading.Event()
+        self._stop_event: threading.Event = threading.Event()
 
         self._executor = ThreadPoolExecutor(max_workers=worker_threads)
 
-        self._client = client or mqtt.Client()
+        self._client: mqtt.Client = client or mqtt.Client()
         if self._broker_username or self._broker_password:
             self._client.username_pw_set(self._broker_username, self._broker_password)
         self._client.on_connect = self._on_connect
@@ -110,7 +110,13 @@ class RawMqttClient:
         if self._connected:
             self._client.unsubscribe(topic)
 
-    def publish(self, topic: str, payload, qos: int = 0, retain: bool = False):
+    def publish(
+        self,
+        topic: str,
+        payload: str | bytes | bytearray,
+        qos: int = 0,
+        retain: bool = False,
+    ) -> mqtt.MQTTMessageInfo:
         """Publish a message."""
         return self._client.publish(topic, payload=payload, qos=qos, retain=retain)
 
@@ -119,7 +125,7 @@ class RawMqttClient:
         return self._connected
 
     # Internal callbacks -------------------------------------------------
-    def _on_connect(self, client, userdata, flags, rc):
+    def _on_connect(self, client: mqtt.Client, userdata: object, flags: dict[str, int], rc: int) -> None:
         """Internal callback when connection is established."""
         if rc == 0:
             self._connected = True
@@ -130,7 +136,7 @@ class RawMqttClient:
             self._connection_error = f"Failed to connect to MQTT broker with code {rc}"
             logger.error(self._connection_error)
 
-    def _on_message(self, client, userdata, message):
+    def _on_message(self, client: mqtt.Client, userdata: object, message: mqtt.MQTTMessage) -> None:
         """Internal callback for handling incoming messages."""
         try:
             payload_str = message.payload.decode()
@@ -149,7 +155,7 @@ class RawMqttClient:
         except Exception as e:
             logger.error(f"Error processing message: {e}")
 
-    def _on_disconnect(self, client, userdata, rc):
+    def _on_disconnect(self, client: mqtt.Client, userdata: object, rc: int) -> None:
         """Internal callback when disconnected."""
         self._connected = False
         if rc != 0:
@@ -200,7 +206,7 @@ class AxisAnalyticsMqttClient:
         You can also inject an existing RawMqttClient or TemporaryAnalyticsMQTTPublisher for testing.
         """
         topic_suffix = hashlib.sha256(analytics_data_source_key.encode()).hexdigest()[:8]
-        self.topic = topic or f"ax-devil/temp/{topic_suffix}"
+        self.topic: str = topic or f"ax-devil/temp/{topic_suffix}"
         self._publisher: Optional[TemporaryAnalyticsMQTTPublisher] = None
         self._client: RawMqttClient
 

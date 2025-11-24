@@ -1,25 +1,28 @@
-import uuid
-import sys
 import logging
-from typing import Optional, Dict, Any
+import sys
+import uuid
+from typing import Any, Dict, Optional
 
 from ax_devil_device_api import Client, DeviceConfig
 
 logger = logging.getLogger(__name__)
 
+
 class TemporaryAnalyticsMQTTPublisher:
     """Automatic temporary MQTT analytics publisher setup and cleanup."""
     
-    def __init__(self, 
-                 device_config: DeviceConfig,
-                 broker_host: str,
-                 broker_port: int,
-                 topic: str,
-                 client_id: str,
-                 analytics_data_source_key: str = "com.axis.analytics_scene_description.v0.beta#1",
-                 broker_username: str = "",
-                 broker_password: str = ""):
-        self.client = Client(device_config)
+    def __init__(
+        self,
+        device_config: DeviceConfig,
+        broker_host: str,
+        broker_port: int,
+        topic: str,
+        client_id: str,
+        analytics_data_source_key: str = "com.axis.analytics_scene_description.v0.beta#1",
+        broker_username: str = "",
+        broker_password: str = "",
+    ) -> None:
+        self.client: Client = Client(device_config)
         self._cleanup_done = False
         self._publisher_created = False
         self.analytics_data_source_key = analytics_data_source_key
@@ -58,7 +61,7 @@ class TemporaryAnalyticsMQTTPublisher:
             if self._publisher_created and self._analytics_publisher_id:
                 self.client.analytics_mqtt.remove_publisher(self._analytics_publisher_id)
 
-            if self._initial_mqtt_status == None:
+            if self._initial_mqtt_status is None:
                 # We have not done anything with the MQTT client yet
                 return
             if self._initial_mqtt_status["config"]:
@@ -71,35 +74,40 @@ class TemporaryAnalyticsMQTTPublisher:
             raise RuntimeError(f"Error during device state restoration: {e}")
 
     def _setup_analytics_publisher(self, analytics_data_source_key: str, topic: str) -> bool:
-        """Create or reuse an existing analytics publisher on the device.
-            returns true if created, false if reused"""
+        """
+        Create or reuse an existing analytics publisher on the device.
+
+        Returns True if the publisher was created, False if an existing one is reused.
+        """
 
         publishers = self.client.analytics_mqtt.list_publishers()
         for publisher in publishers:
-            if (publisher.get("mqtt_topic") == topic and 
-                publisher.get("data_source_key") == analytics_data_source_key and 
-                publisher.get("qos") == 0 and 
-                not publisher.get("retain") and 
-                not publisher.get("use_topic_prefix")):
+            if (
+                publisher.get("mqtt_topic") == topic
+                and publisher.get("data_source_key") == analytics_data_source_key
+                and publisher.get("qos") == 0
+                and not publisher.get("retain")
+                and not publisher.get("use_topic_prefix")
+            ):
                 self._analytics_publisher_id = publisher.get("id")
-                return False # publisher already exists
+                return False  # publisher already exists
 
-        self._analytics_publisher_id = str(uuid.uuid4())        
+        self._analytics_publisher_id = str(uuid.uuid4())
         self.client.analytics_mqtt.create_publisher(
-                        id=self._analytics_publisher_id,
-                        data_source_key=analytics_data_source_key,
-                        mqtt_topic=topic,
-                        qos=0,
-                        retain=False,
-                        use_topic_prefix=False
+            id=self._analytics_publisher_id,
+            data_source_key=analytics_data_source_key,
+            mqtt_topic=topic,
+            qos=0,
+            retain=False,
+            use_topic_prefix=False,
         )
-        return True # publisher created
+        return True  # publisher created
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Clean up resources and restore the device to its original state."""
         if self._cleanup_done:
             return
-            
+
         try:
             self._restore_device_state()
             self._cleanup_done = True
@@ -107,7 +115,7 @@ class TemporaryAnalyticsMQTTPublisher:
         except Exception as e:
             logger.warning(f"Warning: Error during cleanup: {e}")
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Ensure cleanup when object is destroyed."""
         if not self._cleanup_done and sys and sys.modules:
             self.cleanup()
