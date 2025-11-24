@@ -24,6 +24,7 @@ class DummyClient:
         self.subscribed: List[str] = []
         self.unsubscribed: List[str] = []
         self.published = []
+        self.username_pw: List[str] = []
 
     def connect(self, host, port):
         return 0
@@ -48,6 +49,9 @@ class DummyClient:
     def publish(self, topic, payload, qos=0, retain=False):
         self.published.append((topic, payload, qos, retain))
         return None
+
+    def username_pw_set(self, username, password=None):
+        self.username_pw.append((username, password))
 
 
 class DummyAnalyticsPublisher:
@@ -80,6 +84,23 @@ def test_mqtt_client_dispatch_basic():
 
     assert len(processed_messages) == 1
     assert processed_messages[0].payload == "test_payload"
+
+
+def test_mqtt_client_sets_credentials_when_provided():
+    dummy_client = DummyClient()
+
+    RawMqttClient(
+        broker_host="broker",
+        broker_port=1883,
+        topics=[],
+        message_callback=lambda _: None,
+        worker_threads=1,
+        broker_username="user",
+        broker_password="secret",
+        client=dummy_client,
+    )
+
+    assert dummy_client.username_pw == [("user", "secret")]
 
 
 def test_mqtt_client_dispatch_multiple():

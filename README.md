@@ -2,82 +2,96 @@
 
 <div align="center">
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Type Hints](https://img.shields.io/badge/Type%20Hints-Strict-brightgreen.svg)](https://www.python.org/dev/peps/pep-0484/)
 
-Python package for retrieving analytics data from Axis devices over MQTT.
+Python package for easy configuration and consumption of an Axis devices analytics data over MQTT.
 
-See also: [ax-devil-device-api](https://github.com/rasmusrynell/ax-devil-device-api) for device API integration.
+See also:
+* [ax-devil-device-api](https://github.com/rasmusrynell/ax-devil-device-api) for more device API integration.
+* [ax-devil-rtsp](https://github.com/rasmusrynell/ax-devil-rtsp) for RTSP streaming integration of both video and analytics application data.
 
 </div>
 
 ---
 
-## 📋 Contents
-
-- [Feature Overview](#-feature-overview)
-- [Quick Start](#-quick-start)
-- [Usage Examples](#-usage-examples)
-- [Development](#-development)
-- [Disclaimer](#-disclaimer)
-- [License](#-license)
-
----
-
-## 🔍 Feature Overview
-
-<table>
-  <thead>
-    <tr>
-      <th>Feature</th>
-      <th>Description</th>
-      <th align="center">Python API</th>
-      <th align="center">CLI Tool</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><b>🔌 Device Setup</b></td>
-      <td>Configure Axis devices for analytics MQTT publishing</td>
-      <td align="center"><code>AxisAnalyticsMqttClient</code></td>
-      <td align="center"><a href="#mqtt-connection">ax-devil-mqtt device monitor</a></td>
-    </tr>
-    <tr>
-      <td><b>📊 Analytics Streaming</b></td>
-      <td>Stream analytics data from Axis devices with automated setup</td>
-      <td align="center"><code>AxisAnalyticsMqttClient</code></td>
-      <td align="center"><a href="#analytics-streaming">ax-devil-mqtt device monitor</a></td>
-    </tr>
-  </tbody>
-</table>
-
----
-
-## 🚀 Quick Start
-
-### Installation
+## Install
 
 ```bash
 pip install ax-devil-mqtt
 ```
 
-### Environment Variables
-For an easier experience, you can set the following environment variables:
+## Configure (optional)
+
+Set environment variables to avoid repeating credentials and broker details:
+
+- `AX_DEVIL_TARGET_ADDR` – Device IP or hostname  
+- `AX_DEVIL_TARGET_USER` – Device username  
+- `AX_DEVIL_TARGET_PASS` – Device password  
+- `AX_DEVIL_MQTT_BROKER_ADDR` – MQTT broker address  
+- `AX_DEVIL_MQTT_BROKER_PASS` – MQTT broker password  
+
+---
+
+## CLI
+
+Run `ax-devil-mqtt --help` or `ax-devil-mqtt help <command>` for full details. Common flows:
+
+- Discover analytics data sources:
+
 ```bash
-export AX_DEVIL_TARGET_ADDR=<device-ip>
-export AX_DEVIL_TARGET_USER=<username>
-export AX_DEVIL_TARGET_PASS=<password>
-export AX_DEVIL_USAGE_CLI="safe" # Set to "unsafe" to skip SSL certificate verification for CLI calls
+ax-devil-mqtt list-sources \
+  --device-ip <device-ip> \
+  --device-username <username> \
+  --device-password <password>
+```
+
+- Monitor an analytics stream (use your IP instead of `localhost` for the broker):
+
+```bash
+ax-devil-mqtt monitor \
+  --device-ip <device-ip> \
+  --device-username <username> \
+  --device-password <password> \
+  --broker-address <broker-ip> \
+  --broker-port 1883 \
+  --stream "com.axis.analytics_scene_description.v0.beta#1" \
+  --duration 3600       # 0 to run continuously
+```
+
+- Subscribe to an existing MQTT topic without configuring the device:
+
+```bash
+ax-devil-mqtt subscribe \
+  --broker-address <broker-ip> \
+  --broker-port 1883 \
+  --topic "some/topic"
+```
+
+- Inspect or clean analytics publishers configured on the device:
+
+```bash
+ax-devil-mqtt list-publishers \
+  --device-ip <device-ip> \
+  --device-username <username> \
+  --device-password <password>
+
+ax-devil-mqtt clean \
+  --device-ip <device-ip> \
+  --device-username <username> \
+  --device-password <password>
+```
+
+- Open the device’s Analytics MQTT API UI in your browser:
+
+```bash
+ax-devil-mqtt open-api \
+  --device-ip <device-ip> \
+  --device-username <username> \
+  --device-password <password>
 ```
 
 ---
 
-## 💻 Usage Examples
-
-### Python API Usage
-
-🔌 MQTT Connection and Analytics Streaming
+## Python API
 
 ```python
 import time
@@ -112,63 +126,25 @@ time.sleep(5)
 analytics_client.stop()
 ```
 
-### CLI Usage Examples
+---
 
-<details open>
-<summary><b>🔍 Discover Available Analytics Streams</b></summary>
-<p>
-
-Using ax-devil-device-api:
-```bash
-ax-devil-device-api-analytics-mqtt sources
-```
-
-Or discover and list with ax-devil-mqtt:
-```bash
-ax-devil-mqtt device list-sources --device-ip <device-ip> --username <username> --password <password>
-```
-</p>
-</details>
-
-<details open>
-<summary><a name="mqtt-connection"></a><a name="analytics-streaming"></a><b>📊 Streaming Analytics Data Source</b></summary>
-<p>
-
-```bash
-ax-devil-mqtt device monitor \
-    --device-ip <device-ip> \
-    --username <username> \
-    --password <password> \
-    --broker <broker-ip> \
-    --port 1883 \
-    --stream "com.axis.analytics_scene_description.v0.beta#1" \
-    --duration 3600
-```
-</p>
-</details>
-
-## 🛠️ Development
-
-Development dependencies are defined in `pyproject.toml` under the `dev` optional extras.
+## Development
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
-```
 
-Run the checks:
-```bash
 pytest
 mypy src tests
 ```
 
 ---
 
-## ⚠️ Disclaimer
+## Disclaimer
 
-This project is an independent, community-driven implementation and is **not** affiliated with or endorsed by Axis Communications AB. For official APIs and development resources, please refer to [Axis Developer Community](https://www.axis.com/en-us/developer).
+This project is an independent, community-driven implementation and is **not** affiliated with or endorsed by Axis Communications AB. For official APIs and development resources, see the [Axis Developer Community](https://www.axis.com/en-us/developer).
 
-## 📄 License
+## License
 
-MIT License - See [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE) for details.

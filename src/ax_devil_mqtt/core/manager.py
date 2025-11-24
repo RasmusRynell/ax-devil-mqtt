@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class RawMqttClient:
-    """Minimal wrapper around paho-mqtt with optional threaded callbacks."""
+    """Minimal raw client with optional threaded callbacks."""
 
     def __init__(
         self,
@@ -26,6 +26,8 @@ class RawMqttClient:
         message_callback: MessageCallback,
         worker_threads: int = 1,
         connection_timeout_seconds: int = 5,
+        broker_username: str = "",
+        broker_password: str = "",
         client: Optional[mqtt.Client] = None,
     ):
         if worker_threads < 1:
@@ -36,6 +38,8 @@ class RawMqttClient:
         self._topics = list(topics or [])
         self._message_callback = message_callback
         self._connection_timeout_seconds = connection_timeout_seconds
+        self._broker_username = broker_username
+        self._broker_password = broker_password
         self._connected = False
         self._connection_error: Optional[str] = None
         self._stop_event = threading.Event()
@@ -43,6 +47,8 @@ class RawMqttClient:
         self._executor = ThreadPoolExecutor(max_workers=worker_threads)
 
         self._client = client or mqtt.Client()
+        if self._broker_username or self._broker_password:
+            self._client.username_pw_set(self._broker_username, self._broker_password)
         self._client.on_connect = self._on_connect
         self._client.on_message = self._on_message
         self._client.on_disconnect = self._on_disconnect
@@ -220,6 +226,8 @@ class AxisAnalyticsMqttClient:
             topics=[self.topic],
             message_callback=message_callback,
             worker_threads=worker_threads,
+            broker_username=broker_username,
+            broker_password=broker_password,
         )
 
     def start(self) -> None:
