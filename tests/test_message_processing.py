@@ -3,7 +3,7 @@ Tests for message processing functionality that don't require a device.
 """
 import time
 from ax_devil_mqtt.core.manager import MessageProcessor
-from ax_devil_mqtt.core.types import BaseMessage
+from ax_devil_mqtt.core.types import MqttMessage
 
 
 def test_message_processor_basic():
@@ -14,7 +14,7 @@ def test_message_processor_basic():
     
     processor = MessageProcessor(callback=callback, worker_threads=1)
     
-    test_message = BaseMessage(topic="test/topic", payload="test_payload", timestamp="2023-01-01T00:00:00Z")
+    test_message = MqttMessage(topic="test/topic", payload="test_payload")
     processor.submit_message(test_message)
     
     time.sleep(0.1)
@@ -32,7 +32,7 @@ def test_message_processor_multiple_messages():
     processor = MessageProcessor(callback=callback, worker_threads=2)
     
     for i in range(5):
-        test_message = BaseMessage(topic=f"test/topic/{i}", payload=f"test_payload_{i}", timestamp="2023-01-01T00:00:00Z")
+        test_message = MqttMessage(topic=f"test/topic/{i}", payload=f"test_payload_{i}")
         processor.submit_message(test_message)
     
     time.sleep(0.2)
@@ -53,7 +53,7 @@ def test_message_processor_error_handling():
     
     processor = MessageProcessor(callback=error_callback, worker_threads=1)
     
-    test_message = BaseMessage(topic="test/topic", payload="test_payload", timestamp="2023-01-01T00:00:00Z")
+    test_message = MqttMessage(topic="test/topic", payload="test_payload")
     
     processor.submit_message(test_message)
     

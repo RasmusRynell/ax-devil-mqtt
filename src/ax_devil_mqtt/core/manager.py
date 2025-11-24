@@ -7,7 +7,7 @@ import logging
 
 from .subscriber import MQTTSubscriber
 from .temporary_analytics_mqtt_publisher import TemporaryAnalyticsMQTTPublisher
-from .types import DataRetriever, Message, MessageCallback
+from .types import DataRetriever, MqttMessage, MessageCallback
 from ax_devil_device_api import DeviceConfig
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ class MessageProcessor:
         self._stop_event = threading.Event()
         self._lock = threading.Lock()
 
-    def process_message(self, message: Message):
+    def process_message(self, message: MqttMessage):
         """Process a message using the provided callback."""
 
         try:
@@ -37,7 +37,7 @@ class MessageProcessor:
             )
             raise  # Re-raise to let the executor handle the failure
 
-    def submit_message(self, message: Message) -> None:
+    def submit_message(self, message: MqttMessage) -> None:
         """Submit a message for processing."""
         with self._lock:
             if self._stop_event.is_set():
@@ -102,7 +102,7 @@ class StreamManagerBase:
             logger.error(f"Error during stream manager shutdown: {e}")
             raise
 
-    def _on_message_callback(self, message: Message):
+    def _on_message_callback(self, message: MqttMessage):
         """Callback for when a message is received."""
         self._message_processor.submit_message(message)
 

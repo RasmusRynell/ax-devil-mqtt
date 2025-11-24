@@ -1,11 +1,10 @@
 import paho.mqtt.client as mqtt
 from typing import List
 import json
-from datetime import datetime
 import logging
 import time
 
-from .types import DataRetriever, MQTTMessage, MessageCallback
+from .types import DataRetriever, MqttMessage, MessageCallback
 
 logger = logging.getLogger(__name__)
 
@@ -59,8 +58,7 @@ class MQTTSubscriber(DataRetriever):
                 payload = payload_str
             
             # Create typed message
-            mqtt_message = MQTTMessage(
-                timestamp=datetime.now().isoformat(),
+            mqtt_message = MqttMessage(
                 topic=message.topic,
                 payload=payload,
                 qos=message.qos,

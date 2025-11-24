@@ -2,11 +2,12 @@
 import click
 import asyncio
 import os
+
 from ax_devil_mqtt.core.manager import AnalyticsManager
-from ax_devil_mqtt.core.types import Message
+from ax_devil_mqtt.core.types import MqttMessage
 from ax_devil_device_api import Client, DeviceConfig
 
-async def default_message_callback(message: Message):
+async def default_message_callback(message: MqttMessage):
     """Default callback to print received messages with strong typing."""
     click.echo(f"Topic: {message.topic}")
     click.echo(f"Data: {message.payload}")

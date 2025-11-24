@@ -1,8 +1,9 @@
-from ax_devil_device_api import Client, DeviceConfig
 import uuid
 import sys
 import logging
 from typing import Optional, Dict, Any
+
+from ax_devil_device_api import Client, DeviceConfig
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +36,8 @@ class TemporaryAnalyticsMQTTPublisher:
                 password=broker_password,
                 client_id=client_id
             )
-
             self._publisher_created = self._setup_analytics_publisher(analytics_data_source_key, topic)
-
             self.client.mqtt_client.activate()
-        
         except Exception as e:
             self._restore_device_state()
             raise RuntimeError(f"Failed to configure analytics publisher: {e}")

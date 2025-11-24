@@ -92,10 +92,9 @@ device_config = DeviceConfig.http(
     password="pass"
 )
 
-def message_callback(message: Message):
+def message_callback(message: MqttMessage):
     print(f"Topic: {message.topic}")
     print(f"Payload: {message.payload}")
-    print(f"Timestamp: {message.timestamp}")
 
 # Create analytics manager
 manager = AnalyticsManager(
