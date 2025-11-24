@@ -2,7 +2,6 @@ from typing import Dict, Any, Union, Optional
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-import json
 
 # Message Types
 
@@ -83,45 +82,15 @@ class AnalyticsMessage(BaseMessage):
             result['source_key'] = self.source_key
         return result
 
-# Replay Statistics
-
-@dataclass
-class ReplayStats:
-    """Statistics from a replay session."""
-    total_drift: float
-    max_drift: float
-    message_count: int
-    avg_drift: float
-    
-    @classmethod
-    def from_dict(cls, data: Dict[str, float]) -> 'ReplayStats':
-        """Create ReplayStats from a dictionary."""
-        return cls(
-            total_drift=data.get('total_drift', 0.0),
-            max_drift=data.get('max_drift', 0.0),
-            message_count=int(data.get('message_count', 0)),
-            avg_drift=data.get('avg_drift', 0.0)
-        )
-    
-    def to_dict(self) -> Dict[str, float]:
-        """Convert stats to dictionary format."""
-        return {
-            'total_drift': self.total_drift,
-            'max_drift': self.max_drift,
-            'message_count': float(self.message_count),
-            'avg_drift': self.avg_drift
-        }
-
 # Type aliases for convenience
 Message = Union[BaseMessage, MQTTMessage, AnalyticsMessage]
 
 # Callback type definitions  
 from typing import Callable
 MessageCallback = Callable[[Message], None]
-ReplayCompleteCallback = Callable[[ReplayStats], None]
 
 class DataRetriever(ABC):
-    """Interface for message handlers (MQTTSubscriber and ReplayHandler)."""
+    """Interface for message handlers such as MQTTSubscriber."""
     @abstractmethod
     def start(self) -> None:
         pass

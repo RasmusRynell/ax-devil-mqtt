@@ -6,7 +6,7 @@ import pytest
 from datetime import datetime
 
 from ax_devil_mqtt.core.types import (
-    BaseMessage, MQTTMessage, AnalyticsMessage, ReplayStats, Message
+    BaseMessage, MQTTMessage, AnalyticsMessage, Message
 )
 
 
@@ -142,50 +142,6 @@ class TestAnalyticsMessage:
         
         recreated = AnalyticsMessage.from_dict(msg_dict)
         assert recreated.source_key is None
-
-
-class TestReplayStats:
-    """Test ReplayStats functionality."""
-    
-    def test_creation(self):
-        """Test replay stats creation."""
-        stats = ReplayStats(
-            total_drift=150.5,
-            max_drift=75.2,
-            message_count=10,
-            avg_drift=15.05
-        )
-        
-        assert stats.total_drift == 150.5
-        assert stats.max_drift == 75.2
-        assert stats.message_count == 10
-        assert stats.avg_drift == 15.05
-    
-    def test_dict_conversion(self):
-        """Test replay stats dict conversion."""
-        original = ReplayStats(
-            total_drift=100.0,
-            max_drift=50.0,
-            message_count=5,
-            avg_drift=20.0
-        )
-        
-        stats_dict = original.to_dict()
-        recreated = ReplayStats.from_dict(stats_dict)
-        
-        assert recreated.total_drift == original.total_drift
-        assert recreated.max_drift == original.max_drift
-        assert recreated.message_count == original.message_count
-        assert recreated.avg_drift == original.avg_drift
-    
-    def test_from_dict_with_defaults(self):
-        """Test replay stats from empty dict uses defaults."""
-        stats = ReplayStats.from_dict({})
-        
-        assert stats.total_drift == 0.0
-        assert stats.max_drift == 0.0
-        assert stats.message_count == 0
-        assert stats.avg_drift == 0.0
 
 
 class TestMessageUnion:

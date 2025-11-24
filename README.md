@@ -49,18 +49,6 @@ See also: [ax-devil-device-api](https://github.com/rasmusrynell/ax-devil-device-
       <td align="center"><code>AnalyticsManager</code></td>
       <td align="center"><a href="#analytics-streaming">ax-devil-mqtt device monitor</a></td>
     </tr>
-    <tr>
-      <td><b>💾 Data Recording</b></td>
-      <td>Record analytics MQTT data for later replay and analysis</td>
-      <td align="center"><code>manager.start(recording_file)</code></td>
-      <td align="center"><a href="#data-recording">ax-devil-mqtt device monitor --record</a></td>
-    </tr>
-    <tr>
-      <td><b>⏯️ Replay</b></td>
-      <td>Replay recorded MQTT data for testing and development</td>
-      <td align="center"><code>ReplayManager</code></td>
-      <td align="center"><a href="#data-replay">ax-devil-mqtt replay</a></td>
-    </tr>
   </tbody>
 </table>
 
@@ -119,38 +107,6 @@ manager = AnalyticsManager(
 )
 
 manager.start()
-# or manager.start(recording_file="recordings/some_file_name.jsonl")
-time.sleep(10)
-manager.stop()
-```
-
-⏯️ Replay
-
-```python
-import time
-from ax_devil_mqtt import ReplayManager
-from ax_devil_mqtt.core.types import Message, ReplayStats
-
-def message_callback(message: Message):
-    print(f"Topic: {message.topic}")
-    print(f"Payload: {message.payload}")
-    print(f"Timestamp: {message.timestamp}")
-
-def on_replay_complete(stats: ReplayStats):
-    print(f"Replay completed!")
-    print(f"  Total messages: {stats.message_count}")
-    print(f"  Average drift: {stats.avg_drift:.2f}ms")
-    print(f"  Max drift: {stats.max_drift:.2f}ms")
-
-# Create a replay manager
-manager = ReplayManager(
-    recording_file="recordings/device_recording.jsonl",
-    message_callback=message_callback,
-    on_replay_complete=on_replay_complete
-)
-
-# Start the manager
-manager.start()
 time.sleep(10)
 manager.stop()
 ```
@@ -189,60 +145,6 @@ ax-devil-mqtt device monitor \
 ```
 </p>
 </details>
-
-<details>
-<summary><a name="data-recording"></a><b>💾 Recording MQTT Data</b></summary>
-<p>
-
-```bash
-ax-devil-mqtt device monitor \
-    --device-ip <device-ip> \
-    --username <username> \
-    --password <password> \
-    --broker <broker-ip> \
-    --port 1883 \
-    --stream "com.axis.analytics_scene_description.v0.beta#1" \
-    --record \
-    --duration 3600
-```
-</p>
-</details>
-
-<details>
-<summary><a name="data-replay"></a><b>⏯️ Replaying Recorded Data</b></summary>
-<p>
-
-```bash
-ax-devil-mqtt replay recordings/device_recording.jsonl
-```
-</p>
-</details>
-
-### Example Scripts
-
-<details>
-<summary><b>Analytics Monitor Example</b></summary>
-<p>
-
-```bash
-python src/ax_devil_mqtt/examples/analytics_monitor.py --host <broker-ip>
-```
-</p>
-</details>
-
-<details>
-<summary><b>Replay Example</b></summary>
-<p>
-
-```bash
-python src/ax_devil_mqtt/examples/replay.py recordings/device_recording.jsonl
-```
-</p>
-</details>
-
-> **Note:** For more examples, check the [examples directory](src/ax_devil_mqtt/examples) in the source code.
-
----
 
 ## 🛠️ Development
 

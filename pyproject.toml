@@ -24,14 +24,12 @@ classifiers = [
 dependencies = [
     "ax-devil-device-api>=0.3.2",
     "paho-mqtt>=1.6.1",
-    "python-dateutil>=2.8.2",
     "click>=8.0.0"
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
-    "types-python-dateutil>=2.8.0",
     "mypy>=1.0.0"
 ]
 
@@ -42,4 +40,4 @@ Documentation = "https://github.com/rasmusrynell/ax-devil-mqtt#readme"
 "Bug Tracker" = "https://github.com/rasmusrynell/ax-devil-mqtt/issues"
 
 [project.scripts]
-ax-devil-mqtt = "ax_devil_mqtt.examples.cli:cli"
+ax-devil-mqtt = "ax_devil_mqtt.cli:cli"

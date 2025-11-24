@@ -2,9 +2,8 @@
 import click
 import asyncio
 import os
-from pathlib import Path
-from ax_devil_mqtt.core.manager import ReplayManager, AnalyticsManager
-from ax_devil_mqtt.core.types import Message, ReplayStats
+from ax_devil_mqtt.core.manager import AnalyticsManager
+from ax_devil_mqtt.core.types import Message
 from ax_devil_device_api import Client, DeviceConfig
 
 async def default_message_callback(message: Message):
@@ -110,10 +109,8 @@ def list_sources(device_ip, username, password):
 @click.option("--broker", "-b", required=True, help="MQTT broker address")
 @click.option("--port", "-p", default=1883, help="MQTT broker port")
 @click.option("--stream", "-s", required=True, help="Analytics stream to monitor")
-@click.option("--record", "-r", is_flag=True, help="Record messages to file")
 @click.option("--duration", "-d", default=0, help="Monitoring duration in seconds (0 for infinite)")
-@click.option("--record-file", "-f", default="recordings/device_recording.jsonl", help="File to record messages to")
-def monitor(device_ip, username, password, broker, port, stream, record, duration, record_file):
+def monitor(device_ip, username, password, broker, port, stream, duration):
     """Monitor a specific analytics stream"""
     if broker == "localhost":
         click.echo("Error: Cannot use localhost as broker host since camera has to be configured. Find your IP and use that.")
@@ -130,11 +127,7 @@ def monitor(device_ip, username, password, broker, port, stream, record, duratio
     )
     
     try:
-        if record:
-            Path("recordings").mkdir(exist_ok=True)
-            manager.start(record_file)
-        else:
-            manager.start()
+        manager.start()
         
         if duration > 0:
             asyncio.get_event_loop().run_until_complete(asyncio.sleep(duration))
@@ -146,35 +139,5 @@ def monitor(device_ip, username, password, broker, port, stream, record, duratio
     finally:
         manager.stop()
 
-@cli.command("replay")
-@click.argument("recording_file")
-def replay(recording_file):
-    """Replay a recorded analytics session"""
-    
-    loop = asyncio.get_event_loop()
-    
-    def on_replay_complete(stats: ReplayStats):
-        click.echo(f"\nReplay completed!")
-        click.echo(f"  Total messages: {stats.message_count}")
-        click.echo(f"  Average drift: {stats.avg_drift:.2f}ms")
-        click.echo(f"  Max drift: {stats.max_drift:.2f}ms")
-        click.echo("Exiting...")
-        loop.call_soon_threadsafe(loop.stop)
-    
-    manager = ReplayManager(
-        recording_file=recording_file,
-        message_callback=default_message_callback,
-        on_replay_complete=on_replay_complete
-    )
-    
-    try:
-        manager.start()
-        # Run until the replay is complete or interrupted
-        loop.run_forever()
-    except KeyboardInterrupt:
-        click.echo("\nStopping replay...")
-    finally:
-        manager.stop()
-
 if __name__ == "__main__":
-    cli() 
+    cli()

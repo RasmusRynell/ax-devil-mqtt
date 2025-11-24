@@ -1,15 +1,13 @@
 import asyncio
 import hashlib
 import threading
-from typing import Any, Dict, Optional, List
+from typing import Optional, List
 from concurrent.futures import ThreadPoolExecutor
 import logging
 
 from .subscriber import MQTTSubscriber
-from .replay import ReplayHandler
-from .recorder import Recorder
 from .temporary_analytics_mqtt_publisher import TemporaryAnalyticsMQTTPublisher
-from .types import DataRetriever, Message, MessageCallback, ReplayCompleteCallback
+from .types import DataRetriever, Message, MessageCallback
 from ax_devil_device_api import DeviceConfig
 
 logger = logging.getLogger(__name__)
@@ -66,22 +64,16 @@ class StreamManagerBase:
     """Base class for all stream managers."""
     def __init__(self, message_callback: MessageCallback, worker_threads: int = 2):
         self._is_running = False
-        self._is_recording = False
         self._message_processor = MessageProcessor(message_callback, worker_threads)
-        self._recorder = Recorder()
         self._data_retriever: Optional[DataRetriever] = None
 
-    def start(self, recording_file: Optional[str] = None):
-        """Start the stream manager with optional recording."""
+    def start(self):
+        """Start the stream manager."""
         if self._is_running:
             logger.warning("Stream manager is already running")
             return
 
         try:
-            if recording_file:
-                self._recorder.start_recording(recording_file)
-                self._is_recording = True
-                
             if self._data_retriever:
                 self._data_retriever.start()
                 self._is_running = True
@@ -101,10 +93,6 @@ class StreamManagerBase:
         try:
             if self._data_retriever:
                 self._data_retriever.stop()
-            
-            if self._is_recording:
-                self._recorder.stop_recording()
-                self._is_recording = False
                 
             self._message_processor.stop()
             self._is_running = False
@@ -116,8 +104,6 @@ class StreamManagerBase:
 
     def _on_message_callback(self, message: Message):
         """Callback for when a message is received."""
-        if self._is_recording:
-            self._recorder.record_message(message.to_dict())  # Recorder still needs dict format
         self._message_processor.submit_message(message)
 
 class RawMQTTManager(StreamManagerBase):
@@ -195,18 +181,3 @@ class AnalyticsManager(StreamManagerBase):
         except Exception as e:
             logger.error(f"Error during analytics manager shutdown: {e}")
             raise
-
-class ReplayManager(StreamManagerBase):
-    """Manager for replaying MQTT message streams from recorded files."""
-    def __init__(
-        self,
-        recording_file: str,
-        message_callback: MessageCallback,
-        on_replay_complete: Optional[ReplayCompleteCallback] = None,
-        worker_threads: int = 2
-    ):
-        if not recording_file:
-            raise ValueError("recording_file must be provided")
-            
-        super().__init__(message_callback, worker_threads)
-        self._data_retriever = ReplayHandler(self._on_message_callback, recording_file, on_replay_complete)
