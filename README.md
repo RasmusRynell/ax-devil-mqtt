@@ -19,6 +19,7 @@ See also: [ax-devil-device-api](https://github.com/rasmusrynell/ax-devil-device-
 - [Feature Overview](#-feature-overview)
 - [Quick Start](#-quick-start)
 - [Usage Examples](#-usage-examples)
+- [Development](#-development)
 - [Disclaimer](#-disclaimer)
 - [License](#-license)
 
@@ -240,6 +241,24 @@ python src/ax_devil_mqtt/examples/replay.py recordings/device_recording.jsonl
 </details>
 
 > **Note:** For more examples, check the [examples directory](src/ax_devil_mqtt/examples) in the source code.
+
+---
+
+## 🛠️ Development
+
+Development dependencies are defined in `pyproject.toml` under the `dev` optional extras.
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+```
+
+Run the checks:
+```bash
+pytest
+mypy src tests
+```
 
 ---
 
