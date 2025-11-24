@@ -1,12 +1,11 @@
-from typing import Dict, Any, Union, Callable
-from abc import ABC, abstractmethod
+from typing import Any, Callable, Dict
 from dataclasses import dataclass
 
 @dataclass
 class MqttMessage:
     """Single message type used throughout the package."""
     topic: str
-    payload: Union[str, Dict[str, Any], Any]
+    payload: str
     qos: int = 0
     retain: bool = False
     
@@ -20,12 +19,3 @@ class MqttMessage:
         }
 
 MessageCallback = Callable[[MqttMessage], None]
-class DataRetriever(ABC):
-    """Interface for message handlers such as MQTTSubscriber."""
-    @abstractmethod
-    def start(self) -> None:
-        pass
-        
-    @abstractmethod
-    def stop(self) -> None:
-        pass 

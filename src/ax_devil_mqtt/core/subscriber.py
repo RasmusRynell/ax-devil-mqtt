@@ -1,14 +1,15 @@
-import paho.mqtt.client as mqtt
-from typing import List
 import json
 import logging
 import time
+from typing import List
 
-from .types import DataRetriever, MqttMessage, MessageCallback
+import paho.mqtt.client as mqtt
+
+from .types import MessageCallback, MqttMessage
 
 logger = logging.getLogger(__name__)
 
-class MQTTSubscriber(DataRetriever):
+class MQTTSubscriber:
     """
     Handles MQTT subscriptions and message processing.
     This class is responsible for:

@@ -1,13 +1,12 @@
-import asyncio
 import hashlib
 import threading
-from typing import Optional, List
 from concurrent.futures import ThreadPoolExecutor
 import logging
+from typing import Optional, List
 
 from .subscriber import MQTTSubscriber
 from .temporary_analytics_mqtt_publisher import TemporaryAnalyticsMQTTPublisher
-from .types import DataRetriever, MqttMessage, MessageCallback
+from .types import MqttMessage, MessageCallback
 from ax_devil_device_api import DeviceConfig
 
 logger = logging.getLogger(__name__)
@@ -16,7 +15,7 @@ class MessageProcessor:
     """Handles message processing and callback execution."""
     
     def __init__(self, callback: MessageCallback, worker_threads: int):
-        self.callback = callback
+        self.callback: MessageCallback = callback
         self._executor = ThreadPoolExecutor(max_workers=worker_threads)
         self._stop_event = threading.Event()
         self._lock = threading.Lock()
@@ -25,10 +24,7 @@ class MessageProcessor:
         """Process a message using the provided callback."""
 
         try:
-            if asyncio.iscoroutinefunction(self.callback):
-                asyncio.run(self.callback(message))
-            else:
-                self.callback(message)
+            self.callback(message)
         except Exception as e:
             logger.error(
                 f"Error in message callback: {str(e)}. "
@@ -65,7 +61,7 @@ class StreamManagerBase:
     def __init__(self, message_callback: MessageCallback, worker_threads: int = 2):
         self._is_running = False
         self._message_processor = MessageProcessor(message_callback, worker_threads)
-        self._data_retriever: Optional[DataRetriever] = None
+        self._data_retriever: Optional[MQTTSubscriber] = None
 
     def start(self):
         """Start the stream manager."""
