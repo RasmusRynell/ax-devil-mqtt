@@ -40,13 +40,13 @@ See also: [ax-devil-device-api](https://github.com/rasmusrynell/ax-devil-device-
     <tr>
       <td><b>🔌 Device Setup</b></td>
       <td>Configure Axis devices for analytics MQTT publishing</td>
-      <td align="center"><code>RawMQTTManager</code></td>
+      <td align="center"><code>AxisAnalyticsMqttClient</code></td>
       <td align="center"><a href="#mqtt-connection">ax-devil-mqtt device monitor</a></td>
     </tr>
     <tr>
       <td><b>📊 Analytics Streaming</b></td>
       <td>Stream analytics data from Axis devices with automated setup</td>
-      <td align="center"><code>AnalyticsManager</code></td>
+      <td align="center"><code>AxisAnalyticsMqttClient</code></td>
       <td align="center"><a href="#analytics-streaming">ax-devil-mqtt device monitor</a></td>
     </tr>
   </tbody>
@@ -81,33 +81,35 @@ export AX_DEVIL_USAGE_CLI="safe" # Set to "unsafe" to skip SSL certificate verif
 
 ```python
 import time
-from ax_devil_mqtt import AnalyticsManager
-from ax_devil_mqtt.core.types import Message
+from ax_devil_mqtt import AxisAnalyticsMqttClient, RawMqttClient, MqttMessage
 from ax_devil_device_api import DeviceConfig
 
-# Configure device
-device_config = DeviceConfig.http(
-    host="192.168.1.200",
-    username="root",
-    password="pass"
+# Subscribe to an existing topic
+client = RawMqttClient(
+    broker_host="192.168.1.100",
+    broker_port=1883,
+    topics=["some/topic"],
+    message_callback=lambda message: print(message.payload),
+    worker_threads=1,  # dispatch callbacks on a background thread
 )
+client.start()
+time.sleep(5)
+client.stop()
 
-def message_callback(message: MqttMessage):
-    print(f"Topic: {message.topic}")
-    print(f"Payload: {message.payload}")
+# Or configure the device to publish analytics and subscribe automatically
+device_config = DeviceConfig.http(host="192.168.1.200", username="root", password="pass")
 
-# Create analytics manager
-manager = AnalyticsManager(
+analytics_client = AxisAnalyticsMqttClient(
     broker_host="192.168.1.100",
     broker_port=1883,
     device_config=device_config,
     analytics_data_source_key="com.axis.analytics_scene_description.v0.beta#1",
-    message_callback=message_callback
+    message_callback=lambda message: print(message.payload),
+    worker_threads=1,
 )
-
-manager.start()
-time.sleep(10)
-manager.stop()
+analytics_client.start()
+time.sleep(5)
+analytics_client.stop()
 ```
 
 ### CLI Usage Examples

@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-import click
-import asyncio
 import os
+import time
 
-from ax_devil_mqtt.core.manager import AnalyticsManager
-from ax_devil_mqtt.core.types import MqttMessage
+import click
+
 from ax_devil_device_api import Client, DeviceConfig
 
-async def default_message_callback(message: MqttMessage):
+from ax_devil_mqtt.core.manager import AxisAnalyticsMqttClient, RawMqttClient
+from ax_devil_mqtt.core.types import MqttMessage
+
+
+def default_message_callback(message: MqttMessage):
     """Default callback to print received messages with strong typing."""
     click.echo(f"Topic: {message.topic}")
     click.echo(f"Data: {message.payload}")
@@ -119,26 +122,29 @@ def monitor(device_ip, username, password, broker, port, stream, duration):
     
     device_config = create_device_config(device_ip, username, password)
     
-    manager = AnalyticsManager(
-        broker_host=broker,
-        broker_port=port,
-        device_config=device_config,
-        analytics_data_source_key=stream,
-        message_callback=default_message_callback
-    )
+    analytics_client = None
     
     try:
-        manager.start()
-        
+        analytics_client = AxisAnalyticsMqttClient(
+            broker_host=broker,
+            broker_port=port,
+            device_config=device_config,
+            analytics_data_source_key=stream,
+            message_callback=default_message_callback,
+            worker_threads=1
+        )
+        analytics_client.start()
+
         if duration > 0:
-            asyncio.get_event_loop().run_until_complete(asyncio.sleep(duration))
+            time.sleep(duration)
         else:
-            # Run indefinitely until Ctrl+C
-            asyncio.get_event_loop().run_forever()
+            while True:
+                time.sleep(1)
     except KeyboardInterrupt:
         click.echo("\nStopping monitoring...")
     finally:
-        manager.stop()
+        if analytics_client:
+            analytics_client.stop()
 
 if __name__ == "__main__":
     cli()

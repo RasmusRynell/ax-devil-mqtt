@@ -22,7 +22,13 @@ class TemporaryAnalyticsMQTTPublisher:
         self.client = Client(device_config)
         self._cleanup_done = False
         self._publisher_created = False
-        
+        self.analytics_data_source_key = analytics_data_source_key
+        self.broker_host = broker_host
+        self.broker_port = broker_port
+        self.broker_username = broker_username
+        self.broker_password = broker_password
+        self.client_id = client_id
+        self.topic = topic
         self._analytics_publisher_id: Optional[str] = None
         self._initial_mqtt_status: Optional[Dict[str, Any]] = None
 
@@ -30,13 +36,13 @@ class TemporaryAnalyticsMQTTPublisher:
 
         try:
             self.client.mqtt_client.configure(
-                host=broker_host,
-                port=broker_port,
-                username=broker_username,
-                password=broker_password,
-                client_id=client_id
+                host=self.broker_host,
+                port=self.broker_port,
+                username=self.broker_username,
+                password=self.broker_password,
+                client_id=self.client_id
             )
-            self._publisher_created = self._setup_analytics_publisher(analytics_data_source_key, topic)
+            self._publisher_created = self._setup_analytics_publisher(self.analytics_data_source_key, self.topic)
             self.client.mqtt_client.activate()
         except Exception as e:
             self._restore_device_state()
