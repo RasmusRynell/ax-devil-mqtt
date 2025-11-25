@@ -5,9 +5,7 @@
 
 Python package for easy configuration and consumption of an Axis devices analytics data over MQTT.
 
-See also:
-* [ax-devil-device-api](https://github.com/rasmusrynell/ax-devil-device-api) for more device API integration.
-* [ax-devil-rtsp](https://github.com/rasmusrynell/ax-devil-rtsp) for RTSP streaming integration of both video and analytics application data.
+See also: [ax-devil-device-api](https://github.com/rasmusrynell/ax-devil-device-api) and [ax-devil-rtsp](https://github.com/rasmusrynell/ax-devil-rtsp).
 
 </div>
 
