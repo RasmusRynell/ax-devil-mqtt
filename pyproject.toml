@@ -22,7 +22,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "ax-devil-device-api>=0.3.2",
+    "ax-devil-device-api>=0.6.0",
     "paho-mqtt>=1.6.1",
     "click>=8.0.0"
 ]
