@@ -2,13 +2,12 @@
 
 <div align="center">
 
-
 Python package for easy configuration and consumption of an Axis devices analytics data over MQTT.
 
-See also: [ax-devil-device-api](https://github.com/rasmusrynell/ax-devil-device-api) and [ax-devil-rtsp](https://github.com/rasmusrynell/ax-devil-rtsp) for other Axis device management tools.
-
+See also [ax-devil-device-api](https://github.com/rasmusrynell/ax-devil-device-api) and [ax-devil-rtsp](https://github.com/rasmusrynell/ax-devil-rtsp) for related tools.
 
 </div>
+
 
 ---
 
