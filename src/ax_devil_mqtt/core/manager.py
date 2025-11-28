@@ -1,5 +1,4 @@
 import hashlib
-import json
 import logging
 import threading
 import time
@@ -139,11 +138,7 @@ class RawMqttClient:
     def _on_message(self, client: mqtt.Client, userdata: object, message: mqtt.MQTTMessage) -> None:
         """Internal callback for handling incoming messages."""
         try:
-            payload_str = message.payload.decode()
-            try:
-                payload = json.loads(payload_str)
-            except json.JSONDecodeError:
-                payload = payload_str
+            payload = message.payload.decode()
 
             mqtt_message = MqttMessage(
                 topic=message.topic,
