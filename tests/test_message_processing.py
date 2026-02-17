@@ -55,11 +55,18 @@ class DummyClient:
 
 
 class DummyAnalyticsPublisher:
-    def __init__(self):
+    def __init__(self, host: str | None = None):
         self.cleaned = False
+        if host:
+            self.client = type("PublisherClient", (), {"device_config": DummyDeviceConfig(host=host)})()
 
     def cleanup(self):
         self.cleaned = True
+
+
+class DummyDeviceConfig:
+    def __init__(self, host: str):
+        self.host = host
 
 
 def test_mqtt_client_dispatch_basic():
@@ -194,3 +201,68 @@ def test_analytics_client_with_injected_components():
     assert started["value"] is True
     assert started["stopped"] is True
     assert dummy_publisher.cleaned is True
+
+
+def test_analytics_topic_hash_changes_with_device_ip():
+    client_a = AxisAnalyticsMqttClient(
+        broker_host="broker",
+        broker_port=1883,
+        device_config=DummyDeviceConfig(host="192.168.0.10"),
+        analytics_data_source_key="stream-key",
+        message_callback=lambda _: None,
+        create_publisher=False,
+    )
+    client_b = AxisAnalyticsMqttClient(
+        broker_host="broker",
+        broker_port=1883,
+        device_config=DummyDeviceConfig(host="192.168.0.11"),
+        analytics_data_source_key="stream-key",
+        message_callback=lambda _: None,
+        create_publisher=False,
+    )
+
+    assert client_a.topic != client_b.topic
+
+
+def test_analytics_topic_hash_is_stable_for_same_stream_and_device_ip():
+    client_a = AxisAnalyticsMqttClient(
+        broker_host="broker",
+        broker_port=1883,
+        device_config=DummyDeviceConfig(host="192.168.0.10"),
+        analytics_data_source_key="stream-key",
+        message_callback=lambda _: None,
+        create_publisher=False,
+    )
+    client_b = AxisAnalyticsMqttClient(
+        broker_host="broker",
+        broker_port=1883,
+        device_config=DummyDeviceConfig(host="192.168.0.10"),
+        analytics_data_source_key="stream-key",
+        message_callback=lambda _: None,
+        create_publisher=False,
+    )
+
+    assert client_a.topic == client_b.topic
+
+
+def test_analytics_topic_hash_uses_publisher_device_ip_when_device_config_missing():
+    client_a = AxisAnalyticsMqttClient(
+        broker_host="broker",
+        broker_port=1883,
+        device_config=None,
+        analytics_data_source_key="stream-key",
+        message_callback=lambda _: None,
+        create_publisher=False,
+        publisher=DummyAnalyticsPublisher(host="192.168.0.20"),
+    )
+    client_b = AxisAnalyticsMqttClient(
+        broker_host="broker",
+        broker_port=1883,
+        device_config=None,
+        analytics_data_source_key="stream-key",
+        message_callback=lambda _: None,
+        create_publisher=False,
+        publisher=DummyAnalyticsPublisher(host="192.168.0.21"),
+    )
+
+    assert client_a.topic != client_b.topic

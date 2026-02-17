@@ -200,7 +200,9 @@ class AxisAnalyticsMqttClient:
         If create_publisher is False, provide a topic to subscribe to an existing publisher.
         You can also inject an existing RawMqttClient or TemporaryAnalyticsMQTTPublisher for testing.
         """
-        topic_suffix = hashlib.sha256(analytics_data_source_key.encode()).hexdigest()[:8]
+        device_host = self._resolve_device_host(device_config, publisher)
+        hash_input = f"{analytics_data_source_key}:{device_host}"
+        topic_suffix = hashlib.sha256(hash_input.encode()).hexdigest()[:8]
         self.topic: str = topic or f"ax-devil/temp/{topic_suffix}"
         self._publisher: Optional[TemporaryAnalyticsMQTTPublisher] = None
         self._client: RawMqttClient
@@ -230,6 +232,22 @@ class AxisAnalyticsMqttClient:
             broker_username=broker_username,
             broker_password=broker_password,
         )
+
+    @staticmethod
+    def _resolve_device_host(
+        device_config: Optional[DeviceConfig],
+        publisher: Optional[TemporaryAnalyticsMQTTPublisher],
+    ) -> str:
+        """Resolve device host used in topic hashing."""
+        if device_config and getattr(device_config, "host", ""):
+            return str(device_config.host)
+
+        if publisher and getattr(publisher, "client", None):
+            publisher_device_config = getattr(publisher.client, "device_config", None)
+            if publisher_device_config and getattr(publisher_device_config, "host", ""):
+                return str(publisher_device_config.host)
+
+        return ""
 
     def start(self) -> None:
         """Start listening for analytics messages."""
