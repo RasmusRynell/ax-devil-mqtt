@@ -62,7 +62,7 @@ Configures an Axis device to publish analytics data to a broker, then subscribes
 from ax_devil_mqtt import AxisAnalyticsMqttClient, MqttMessage
 from ax_devil_device_api import DeviceConfig
 
-device_config = DeviceConfig.http(host="<device-ip>", username="<user>", password="<pass>")
+device_config = DeviceConfig.https(host="<device-ip>", username="<user>", password="<pass>")
 
 client = AxisAnalyticsMqttClient(
     broker_host="<broker-ip>",     # Required: must be reachable from the device
@@ -97,7 +97,7 @@ from ax_devil_mqtt import TemporaryAnalyticsMQTTPublisher
 from ax_devil_device_api import DeviceConfig
 
 publisher = TemporaryAnalyticsMQTTPublisher(
-    device_config=DeviceConfig.http(host="<device-ip>", username="<user>", password="<pass>"),
+    device_config=DeviceConfig.https(host="<device-ip>", username="<user>", password="<pass>"),
     broker_host="<broker-ip>",
     broker_port=1883,
     topic="ax-devil/temp/abc123",
@@ -128,7 +128,7 @@ def on_message(msg: MqttMessage) -> None:
     data = json.loads(msg.payload)
     frames.append(data)
 
-device = DeviceConfig.http(host="<device-ip>", username="<user>", password="<pass>")
+device = DeviceConfig.https(host="<device-ip>", username="<user>", password="<pass>")
 client = AxisAnalyticsMqttClient(
     broker_host="<broker-ip>",
     broker_port=1883,

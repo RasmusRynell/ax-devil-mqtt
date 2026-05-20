@@ -113,7 +113,7 @@ time.sleep(5)
 client.stop()
 
 # Or configure the device to publish analytics and subscribe automatically
-device_config = DeviceConfig.http(host="192.168.1.200", username="root", password="pass")
+device_config = DeviceConfig.https(host="192.168.1.200", username="root", password="pass")
 
 analytics_client = AxisAnalyticsMqttClient(
     broker_host="192.168.1.100",

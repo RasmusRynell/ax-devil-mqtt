@@ -19,9 +19,11 @@ def default_message_callback(message: MqttMessage) -> None:
     click.echo(message.payload)
 
 
-def build_device_config(device_ip: str, device_username: str, device_password: str) -> DeviceConfig:
+def build_device_config(device_ip: str, device_username: str, device_password: str, protocol: str = "https") -> DeviceConfig:
     """Create a DeviceConfig from CLI-provided credentials."""
-    return DeviceConfig.http(host=device_ip, username=device_username, password=device_password)
+    if protocol == "http":
+        return DeviceConfig.http(host=device_ip, username=device_username, password=device_password)
+    return DeviceConfig.https(host=device_ip, username=device_username, password=device_password)
 
 
 def device_options(func: F) -> F:
@@ -49,6 +51,13 @@ def device_options(func: F) -> F:
         show_envvar=True,
         required=True,
         help="Device IP address or hostname",
+    )(func)
+    func = click.option(
+        "--protocol",
+        type=click.Choice(["http", "https"]),
+        default="https",
+        show_default=True,
+        help="Connection protocol",
     )(func)
     return func
 
@@ -85,23 +94,23 @@ def version() -> None:
 
 @cli.command("open-api", help="Open the device API in browser", context_settings=CONTEXT_SETTINGS)
 @device_options
-def open_api(device_ip: str, device_username: str, device_password: str) -> None:
+def open_api(device_ip: str, device_username: str, device_password: str, protocol: str) -> None:
     """Open the device API."""
-    device_config = build_device_config(device_ip, device_username, device_password)
+    device_config = build_device_config(device_ip, device_username, device_password, protocol)
 
     client = Client(device_config)
     apis = client.discovery.discover()
     analytics_api = apis.get_api("analytics-mqtt")
 
     import webbrowser
-    webbrowser.open(f"https://{device_ip}{analytics_api.rest_ui_url}")
+    webbrowser.open(f"{protocol}://{device_ip}{analytics_api.rest_ui_url}")
 
 
 @cli.command("clean", help="Clean existing temporary MQTT publishers", context_settings=CONTEXT_SETTINGS)
 @device_options
-def clean(device_ip: str, device_username: str, device_password: str) -> None:
+def clean(device_ip: str, device_username: str, device_password: str, protocol: str) -> None:
     """Clean all temporary MQTT publishers."""
-    device_config = build_device_config(device_ip, device_username, device_password)
+    device_config = build_device_config(device_ip, device_username, device_password, protocol)
 
     client = Client(device_config)
     for publisher in client.analytics_mqtt.list_publishers():
@@ -114,9 +123,9 @@ def clean(device_ip: str, device_username: str, device_password: str) -> None:
 
 @cli.command("list-publishers", help="List all existing analytics MQTT publishers", context_settings=CONTEXT_SETTINGS)
 @device_options
-def list_publishers(device_ip: str, device_username: str, device_password: str) -> int | None:
+def list_publishers(device_ip: str, device_username: str, device_password: str, protocol: str) -> int | None:
     """List analytics MQTT publishers on the device."""
-    device_config = build_device_config(device_ip, device_username, device_password)
+    device_config = build_device_config(device_ip, device_username, device_password, protocol)
 
     client = Client(device_config)
     try:
@@ -136,9 +145,9 @@ def list_publishers(device_ip: str, device_username: str, device_password: str) 
 
 @cli.command("list-sources", help="List available analytics data sources", context_settings=CONTEXT_SETTINGS)
 @device_options
-def list_sources(device_ip: str, device_username: str, device_password: str) -> int | None:
+def list_sources(device_ip: str, device_username: str, device_password: str, protocol: str) -> int | None:
     """List available analytics data sources from the device."""
-    device_config = build_device_config(device_ip, device_username, device_password)
+    device_config = build_device_config(device_ip, device_username, device_password, protocol)
 
     client = Client(device_config)
 
@@ -259,6 +268,7 @@ def monitor(
     device_ip: str,
     device_username: str,
     device_password: str,
+    protocol: str,
     broker_address: str,
     broker_port: int,
     broker_username: str,
@@ -273,7 +283,7 @@ def monitor(
         )
         raise click.Abort()
 
-    device_config = build_device_config(device_ip, device_username, device_password)
+    device_config = build_device_config(device_ip, device_username, device_password, protocol)
     analytics_client: AxisAnalyticsMqttClient | None = None
 
     try:
