@@ -21,6 +21,8 @@ See also [ax-devil-device-api](https://github.com/rasmusrynell/ax-devil-device-a
 pip install ax-devil-mqtt
 ```
 
+`ax-devil-mqtt` is the MQTT analytics layer. It is pure Python apart from normal network access to the broker/device, and it is expected to work on both Linux and Windows. If platform-specific behavior appears, fix it in this repository rather than in the desktop app.
+
 ## Configure (optional)
 
 Set environment variables to avoid repeating credentials and broker details:
